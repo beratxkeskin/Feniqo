@@ -34,11 +34,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               .eq('id', session.user.id)
               .single();
 
+            const savedLang = (localStorage.getItem('moneymate_lang') as 'tr' | 'en') || 'tr';
             setUser({
               id: session.user.id,
               email: session.user.email || '',
               currency: (profileData?.currency as any) || 'TRY',
               theme: (profileData?.theme as any) || 'system',
+              lang: savedLang,
             });
             setIsDemo(false);
           } else {
@@ -59,7 +61,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const checkDemoSession = () => {
       const storedDemo = localStorage.getItem('moneymate_demo_user');
       if (storedDemo) {
-        setUser(JSON.parse(storedDemo));
+        const parsed = JSON.parse(storedDemo);
+        const savedLang = (localStorage.getItem('moneymate_lang') as 'tr' | 'en') || 'tr';
+        setUser({ ...parsed, lang: parsed.lang || savedLang });
         setIsDemo(true);
       } else {
         setUser(null);
@@ -79,11 +83,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .eq('id', session.user.id)
             .single();
 
+          const savedLang = (localStorage.getItem('moneymate_lang') as 'tr' | 'en') || 'tr';
           setUser({
             id: session.user.id,
             email: session.user.email || '',
             currency: (profileData?.currency as any) || 'TRY',
             theme: (profileData?.theme as any) || 'system',
+            lang: savedLang,
           });
           setIsDemo(false);
         } else {
@@ -109,11 +115,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 800));
       
+      const savedLang = (localStorage.getItem('moneymate_lang') as 'tr' | 'en') || 'tr';
       const mockUser: Profile = {
         id: 'demo-user-123',
         email: email || 'demo@moneymate.com',
         currency: 'TRY',
         theme: 'system',
+        lang: savedLang,
       };
       
       localStorage.setItem('moneymate_demo_user', JSON.stringify(mockUser));
@@ -147,11 +155,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // If Supabase not configured, register as a demo user
     if (!isSupabaseConfigured || !supabase) {
       await new Promise(resolve => setTimeout(resolve, 800));
+      const savedLang = (localStorage.getItem('moneymate_lang') as 'tr' | 'en') || 'tr';
       const mockUser: Profile = {
         id: 'demo-user-123',
         email,
         currency: 'TRY',
         theme: 'system',
+        lang: savedLang,
       };
       localStorage.setItem('moneymate_demo_user', JSON.stringify(mockUser));
       setUser(mockUser);
@@ -195,6 +205,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return { success: false, error: 'Kullanıcı oturumu bulunamadı.' };
 
     const updatedUser = { ...user, ...updates };
+
+    if (updates.lang) {
+      localStorage.setItem('moneymate_lang', updates.lang);
+    }
 
     if (isDemo) {
       localStorage.setItem('moneymate_demo_user', JSON.stringify(updatedUser));

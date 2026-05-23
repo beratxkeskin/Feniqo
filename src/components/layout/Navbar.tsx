@@ -9,7 +9,11 @@ import {
   FolderTree, 
   BarChart3, 
   Settings, 
-  LogOut 
+  LogOut,
+  Repeat,
+  Target,
+  Coins,
+  CalendarClock
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ThemeToggle } from '../common/ThemeToggle';
@@ -23,13 +27,19 @@ export const Navbar: React.FC<NavbarProps> = ({ currentHash, onNavigate }) => {
   const { user, signOut, isDemo } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
+  const isEn = user?.lang === 'en';
+
   const menuItems = [
     { name: 'Dashboard', hash: '#/dashboard', icon: LayoutDashboard },
-    { name: 'İşlemler', hash: '#/transactions', icon: ArrowUpDown },
-    { name: 'Bütçeler', hash: '#/budgets', icon: PiggyBank },
-    { name: 'Kategoriler', hash: '#/categories', icon: FolderTree },
-    { name: 'Raporlar', hash: '#/reports', icon: BarChart3 },
-    { name: 'Ayarlar', hash: '#/settings', icon: Settings },
+    { name: isEn ? 'Transactions' : 'İşlemler', hash: '#/transactions', icon: ArrowUpDown },
+    { name: isEn ? 'Recurring' : 'Tekrarlayanlar', hash: '#/recurring', icon: Repeat },
+    { name: isEn ? 'Subscriptions' : 'Abonelikler', hash: '#/subscriptions', icon: CalendarClock },
+    { name: isEn ? 'Budgets' : 'Bütçeler', hash: '#/budgets', icon: PiggyBank },
+    { name: isEn ? 'Goals' : 'Hedefler', hash: '#/goals', icon: Target },
+    { name: isEn ? 'Debts & Receivables' : 'Borç & Alacak', hash: '#/debts', icon: Coins },
+    { name: isEn ? 'Categories' : 'Kategoriler', hash: '#/categories', icon: FolderTree },
+    { name: isEn ? 'Reports' : 'Raporlar', hash: '#/reports', icon: BarChart3 },
+    { name: isEn ? 'Settings' : 'Ayarlar', hash: '#/settings', icon: Settings },
   ];
 
   if (!user) return null;
@@ -48,9 +58,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentHash, onNavigate }) => {
         
         {/* Brand/Logo */}
         <div className="flex items-center space-x-2">
-          <div className="p-1.5 bg-brand-500/10 dark:bg-brand-500/20 text-brand-600 dark:text-brand-400 rounded-lg">
-            <TrendingUp size={20} strokeWidth={2.5} />
-          </div>
+          <img src="/favicon.png" alt="MoneyMate Logo" className="w-8 h-8 rounded-lg object-contain shadow-sm shrink-0" />
           <span className="font-bold text-slate-900 dark:text-white tracking-tight">MoneyMate</span>
           <span className="text-[8px] font-bold text-brand-600 dark:text-brand-400 bg-brand-500/10 px-1 py-0.2 rounded-md">
             {isDemo ? 'DEMO' : 'PRO'}
@@ -81,9 +89,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentHash, onNavigate }) => {
             {/* Header */}
             <div className="flex items-center justify-between pb-6 border-b border-slate-100 dark:border-slate-800/60">
               <div className="flex items-center space-x-2">
-                <div className="p-2 bg-brand-500/10 text-brand-600 rounded-lg">
-                  <TrendingUp size={20} />
-                </div>
+                <img src="/favicon.png" alt="MoneyMate Logo" className="w-8 h-8 rounded-lg object-contain shadow-sm shrink-0" />
                 <span className="font-bold text-lg dark:text-white">MoneyMate</span>
               </div>
               <button 

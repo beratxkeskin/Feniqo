@@ -22,7 +22,7 @@ export const BudgetProgress: React.FC<BudgetProgressProps> = ({
 
   // Determine colors based on thresholds
   let barColor = 'bg-brand-500';
-  let badgeBg = 'bg-brand-50 dark:bg-brand-950/20 text-brand-600 dark:text-brand-400';
+  let badgeBg = 'bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400';
 
   if (percentage >= 100) {
     barColor = 'bg-red-500 animate-pulse';

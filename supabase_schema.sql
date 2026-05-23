@@ -58,6 +58,42 @@ CREATE TABLE public.budgets (
 -- Enable RLS for budgets
 ALTER TABLE public.budgets ENABLE ROW LEVEL SECURITY;
 
+-- 5. Create Recurring Transactions Table
+CREATE TABLE public.recurring_transactions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    amount NUMERIC NOT NULL CHECK (amount >= 0),
+    type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+    category_id UUID REFERENCES public.categories(id) ON DELETE RESTRICT NOT NULL,
+    description TEXT,
+    payment_method TEXT NOT NULL,
+    frequency TEXT NOT NULL CHECK (frequency IN ('daily', 'weekly', 'monthly', 'yearly')),
+    start_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    end_date DATE,
+    last_processed_date DATE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable RLS for recurring_transactions
+ALTER TABLE public.recurring_transactions ENABLE ROW LEVEL SECURITY;
+
+-- 6. Create Goals Table
+CREATE TABLE public.goals (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    name TEXT NOT NULL,
+    target_amount NUMERIC NOT NULL CHECK (target_amount > 0),
+    current_amount NUMERIC NOT NULL DEFAULT 0 CHECK (current_amount >= 0),
+    target_date DATE NOT NULL,
+    color TEXT NOT NULL, -- Hex code or preset name
+    icon TEXT, -- Lucide icon name
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable RLS for goals
+ALTER TABLE public.goals ENABLE ROW LEVEL SECURITY;
+
 
 -----------------------------------------------------------
 -- ROW LEVEL SECURITY (RLS) POLICIES
@@ -123,6 +159,40 @@ CREATE POLICY "Users can delete their own budgets"
     ON public.budgets FOR DELETE 
     USING (auth.uid() = user_id);
 
+-- Recurring Transactions Policies
+CREATE POLICY "Users can view their own recurring transactions" 
+    ON public.recurring_transactions FOR SELECT 
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own recurring transactions" 
+    ON public.recurring_transactions FOR INSERT 
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own recurring transactions" 
+    ON public.recurring_transactions FOR UPDATE 
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own recurring transactions" 
+    ON public.recurring_transactions FOR DELETE 
+    USING (auth.uid() = user_id);
+
+-- Goals Policies
+CREATE POLICY "Users can view their own goals" 
+    ON public.goals FOR SELECT 
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own goals" 
+    ON public.goals FOR INSERT 
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own goals" 
+    ON public.goals FOR UPDATE 
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own goals" 
+    ON public.goals FOR DELETE 
+    USING (auth.uid() = user_id);
+
 
 -----------------------------------------------------------
 -- AUTOMATIC PROFILE CREATION TRIGGER ON SIGNUP
@@ -168,3 +238,77 @@ INSERT INTO public.categories (name, type, color, icon, is_default) VALUES
 ('Sağlık', 'expense', '#EF4444', 'HeartPulse', TRUE),
 ('Abonelik', 'expense', '#6366F1', 'CreditCard', TRUE),
 ('Diğer Gider', 'expense', '#6B7280', 'HelpCircle', TRUE);
+
+
+-----------------------------------------------------------
+-- 7. CREATE DEBTS TABLE & POLICIES
+-----------------------------------------------------------
+
+CREATE TABLE public.debts (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    title TEXT NOT NULL,
+    amount NUMERIC NOT NULL CHECK (amount >= 0),
+    type TEXT NOT NULL CHECK (type IN ('debt', 'receivable')),
+    due_date DATE NOT NULL,
+    is_paid BOOLEAN NOT NULL DEFAULT FALSE,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable RLS for debts
+ALTER TABLE public.debts ENABLE ROW LEVEL SECURITY;
+
+-- Debts Policies
+CREATE POLICY "Users can view their own debts" 
+    ON public.debts FOR SELECT 
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own debts" 
+    ON public.debts FOR INSERT 
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own debts" 
+    ON public.debts FOR UPDATE 
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own debts" 
+    ON public.debts FOR DELETE 
+    USING (auth.uid() = user_id);
+
+
+-----------------------------------------------------------
+-- 8. CREATE SUBSCRIPTIONS TABLE & POLICIES
+-----------------------------------------------------------
+
+CREATE TABLE public.subscriptions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    name TEXT NOT NULL,
+    amount NUMERIC NOT NULL CHECK (amount >= 0),
+    renewal_date DATE NOT NULL,
+    category_id UUID REFERENCES public.categories(id) ON DELETE SET NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable RLS for subscriptions
+ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
+
+-- Subscriptions Policies
+CREATE POLICY "Users can view their own subscriptions" 
+    ON public.subscriptions FOR SELECT 
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own subscriptions" 
+    ON public.subscriptions FOR INSERT 
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own subscriptions" 
+    ON public.subscriptions FOR UPDATE 
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own subscriptions" 
+    ON public.subscriptions FOR DELETE 
+    USING (auth.uid() = user_id);
+

@@ -7,7 +7,11 @@ import {
   BarChart3, 
   Settings, 
   LogOut,
-  TrendingUp
+  TrendingUp,
+  Repeat,
+  Target,
+  Coins,
+  CalendarClock
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ThemeToggle } from '../common/ThemeToggle';
@@ -20,13 +24,19 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ currentHash, onNavigate }) => {
   const { user, signOut, isDemo } = useAuth();
 
+  const isEn = user?.lang === 'en';
+
   const menuItems = [
     { name: 'Dashboard', hash: '#/dashboard', icon: LayoutDashboard },
-    { name: 'İşlemler', hash: '#/transactions', icon: ArrowUpDown },
-    { name: 'Bütçeler', hash: '#/budgets', icon: PiggyBank },
-    { name: 'Kategoriler', hash: '#/categories', icon: FolderTree },
-    { name: 'Raporlar', hash: '#/reports', icon: BarChart3 },
-    { name: 'Ayarlar', hash: '#/settings', icon: Settings },
+    { name: isEn ? 'Transactions' : 'İşlemler', hash: '#/transactions', icon: ArrowUpDown },
+    { name: isEn ? 'Recurring' : 'Tekrarlayanlar', hash: '#/recurring', icon: Repeat },
+    { name: isEn ? 'Subscriptions' : 'Abonelikler', hash: '#/subscriptions', icon: CalendarClock },
+    { name: isEn ? 'Budgets' : 'Bütçeler', hash: '#/budgets', icon: PiggyBank },
+    { name: isEn ? 'Goals' : 'Hedefler', hash: '#/goals', icon: Target },
+    { name: isEn ? 'Debts & Receivables' : 'Borç & Alacak', hash: '#/debts', icon: Coins },
+    { name: isEn ? 'Categories' : 'Kategoriler', hash: '#/categories', icon: FolderTree },
+    { name: isEn ? 'Reports' : 'Raporlar', hash: '#/reports', icon: BarChart3 },
+    { name: isEn ? 'Settings' : 'Ayarlar', hash: '#/settings', icon: Settings },
   ];
 
   if (!user) return null;
@@ -36,9 +46,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentHash, onNavigate }) => 
       
       {/* Brand Header */}
       <div className="flex items-center space-x-3 px-6 py-6 border-b border-slate-100 dark:border-slate-800/60">
-        <div className="p-2.5 bg-brand-500/10 dark:bg-brand-500/20 text-brand-600 dark:text-brand-400 rounded-xl">
-          <TrendingUp size={24} strokeWidth={2.5} />
-        </div>
+        <img src="/favicon.png" alt="MoneyMate Logo" className="w-10 h-10 rounded-xl object-contain shadow-sm shrink-0" />
         <div>
           <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white leading-none">
             MoneyMate

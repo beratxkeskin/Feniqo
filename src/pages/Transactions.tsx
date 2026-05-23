@@ -270,7 +270,7 @@ export const Transactions: React.FC = () => {
               </h3>
               <button 
                 onClick={() => setIsFormOpen(false)}
-                className="p-1.5 text-slate-450 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
               >
                 <X size={18} />
               </button>

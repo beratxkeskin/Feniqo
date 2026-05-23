@@ -25,7 +25,7 @@ export const StatCard: React.FC<StatCardProps> = ({
 
   const variants = {
     primary: {
-      bg: 'bg-brand-50 dark:bg-brand-950/20',
+      bg: 'bg-brand-50 dark:bg-brand-900/20',
       icon: 'text-brand-600 dark:text-brand-400',
       border: 'border-slate-200 dark:border-slate-800',
     },

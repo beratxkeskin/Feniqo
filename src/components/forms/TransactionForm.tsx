@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, DollarSign, FileText, CheckCircle2, Loader, ArrowUpDown, CreditCard, Globe, RefreshCw } from 'lucide-react';
+import { Calendar, FileText, CheckCircle2, Loader, ArrowUpDown, CreditCard, Globe, RefreshCw, Repeat } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import { getCurrencySymbol } from '../../utils/formatters';
@@ -19,7 +19,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   onCancel,
 }) => {
   const { user } = useAuth();
-  const { categories, addTransaction, updateTransaction } = useData();
+  const { categories, addTransaction, updateTransaction, addRecurringTransaction } = useData();
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [categoryId, setCategoryId] = useState('');
@@ -37,6 +37,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Recurring States
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
+  const [endDate, setEndDate] = useState('');
 
   // Filter categories based on transaction type (income vs expense)
   const filteredCategories = categories.filter(c => c.type === type);
@@ -154,7 +159,21 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       if (transactionToEdit) {
         res = await updateTransaction(transactionToEdit.id, txData);
       } else {
-        res = await addTransaction(txData);
+        if (isRecurring) {
+          res = await addRecurringTransaction({
+            amount: parsedAmount,
+            type,
+            category_id: categoryId,
+            description: finalDescription,
+            payment_method: paymentMethod,
+            frequency,
+            start_date: date,
+            end_date: endDate || null,
+            is_active: true
+          });
+        } else {
+          res = await addTransaction(txData);
+        }
       }
 
       if (res.success) {
@@ -402,6 +421,58 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Recurring Option (Only for new transactions) */}
+      {!transactionToEdit && (
+        <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800/50">
+          <label className="flex items-center space-x-2 cursor-pointer group">
+            <div className={`w-10 h-5 rounded-full transition-colors relative flex items-center ${isRecurring ? 'bg-brand-500' : 'bg-slate-200 dark:bg-slate-700'}`}>
+              <div className={`w-4 h-4 bg-white rounded-full shadow-sm absolute transition-transform ${isRecurring ? 'translate-x-5' : 'translate-x-1'}`} />
+            </div>
+            <input 
+              type="checkbox" 
+              className="sr-only" 
+              checked={isRecurring}
+              onChange={(e) => setIsRecurring(e.target.checked)} 
+            />
+            <div className="flex items-center space-x-1.5 text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+              <Repeat size={16} />
+              <span>Bu işlemi düzenli olarak tekrarla</span>
+            </div>
+          </label>
+
+          {isRecurring && (
+            <div className="p-4 bg-brand-50 dark:bg-brand-900/10 rounded-xl border border-brand-100 dark:border-brand-800/50 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">Tekrar Sıklığı</label>
+                  <select
+                    value={frequency}
+                    onChange={(e) => setFrequency(e.target.value as any)}
+                    className="premium-input text-sm py-2 px-3 appearance-none bg-no-repeat cursor-pointer shadow-sm"
+                    style={{ backgroundImage: 'url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3E%3Cpath stroke=\'%236B7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'m6 8 4 4 4-4\'/%3E%3C/svg%3E")', backgroundPosition: 'right 0.75rem center', backgroundSize: '1rem' }}
+                  >
+                    <option value="daily">Her Gün</option>
+                    <option value="weekly">Her Hafta</option>
+                    <option value="monthly">Her Ay</option>
+                    <option value="yearly">Her Yıl</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">Bitiş Tarihi (Opsiyonel)</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    min={date}
+                    className="premium-input text-sm py-2 px-3 shadow-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Buttons */}
       <div className="flex items-center justify-end space-x-3 pt-5 border-t border-slate-100 dark:border-slate-800/50">

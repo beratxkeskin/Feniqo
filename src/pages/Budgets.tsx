@@ -110,7 +110,7 @@ export const Budgets: React.FC = () => {
         {/* Add budget & Date picker controls */}
         <div className="flex items-center space-x-3">
           <div className="relative">
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-450 dark:text-slate-500">
+            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
               <Calendar size={14} />
             </span>
             <input
@@ -159,7 +159,7 @@ export const Budgets: React.FC = () => {
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">Bütçe Limiti Tanımla</h3>
               <button 
                 onClick={() => setIsFormOpen(false)}
-                className="p-1.5 text-slate-450 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
               >
                 <X size={18} />
               </button>
@@ -173,14 +173,14 @@ export const Budgets: React.FC = () => {
               )}
 
               {/* Month Display */}
-              <div className="p-3.5 bg-slate-50 dark:bg-slate-850/50 rounded-xl border border-slate-100 dark:border-slate-800/50 flex justify-between items-center text-xs">
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-800/50 flex justify-between items-center text-xs">
                 <span className="text-slate-400">Dönem:</span>
                 <strong className="text-slate-800 dark:text-slate-200 font-bold">{selectedMonth}</strong>
               </div>
 
               {/* Category Select */}
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider pl-1">
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider pl-1">
                   Kategori *
                 </label>
                 <select
@@ -199,7 +199,7 @@ export const Budgets: React.FC = () => {
 
               {/* Limit Amount Input */}
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider pl-1">
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider pl-1">
                   Aylık Harcama Limiti *
                 </label>
                 <div className="relative">

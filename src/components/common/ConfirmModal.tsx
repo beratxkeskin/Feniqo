@@ -45,7 +45,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
         <div className="flex items-start space-x-4">
           {/* Warning Icon */}
-          <div className={`p-3 rounded-xl flex-shrink-0 ${isDangerous ? 'bg-red-50 dark:bg-red-950/50 text-red-500' : 'bg-brand-50 dark:bg-brand-950/50 text-brand-500'}`}>
+          <div className={`p-3 rounded-xl flex-shrink-0 ${isDangerous ? 'bg-red-50 dark:bg-red-950/50 text-red-500' : 'bg-brand-50 dark:bg-brand-900/30 text-brand-500'}`}>
             <AlertTriangle size={24} />
           </div>
 

@@ -72,7 +72,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
                     {/* Description Column */}
                     <td className="px-6 py-4.5 max-w-[200px] truncate">
                       <span className="font-medium text-slate-800 dark:text-slate-200">
-                        {tx.description || <span className="text-slate-350 dark:text-slate-600 italic">Detay yok</span>}
+                        {tx.description || <span className="text-slate-400 dark:text-slate-500 italic">Detay yok</span>}
                       </span>
                     </td>
 
@@ -175,7 +175,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
                 <div className="flex items-end justify-between pl-11">
                   <div className="space-y-1">
                     <p className="text-xs text-slate-700 dark:text-slate-300 font-medium line-clamp-1">
-                      {tx.description || <span className="text-slate-350 italic">Açıklama yok</span>}
+                      {tx.description || <span className="text-slate-400 dark:text-slate-500 italic">Açıklama yok</span>}
                     </p>
                     <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                       {tx.payment_method}

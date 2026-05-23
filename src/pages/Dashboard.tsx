@@ -326,7 +326,7 @@ export const Dashboard: React.FC = () => {
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">Yeni Gelir / Gider İşlemi Ekle</h3>
               <button 
                 onClick={() => setIsModalOpen(false)}
-                className="p-1.5 text-slate-450 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
               >
                 <Icons.X size={18} />
               </button>

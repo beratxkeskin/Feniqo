@@ -61,7 +61,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
           </p>
           {payload.map((entry: any, index: number) => (
             <div key={index} className="flex items-center space-x-3.5 justify-between">
-              <span className="flex items-center space-x-1.5 text-slate-500 dark:text-slate-350">
+              <span className="flex items-center space-x-1.5 text-slate-500 dark:text-slate-400">
                 <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: entry.color }} />
                 <span>{entry.name}:</span>
               </span>

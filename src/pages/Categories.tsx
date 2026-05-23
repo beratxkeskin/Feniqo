@@ -135,7 +135,7 @@ export const Categories: React.FC = () => {
       <div className="space-y-3.5">
         <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center space-x-2">
           <span>Özel Kategorileriniz</span>
-          <span className="text-[10px] font-bold text-brand-650 bg-brand-500/10 px-2 py-0.5 rounded-full">
+          <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400 bg-brand-500/10 dark:bg-brand-500/20 px-2 py-0.5 rounded-full">
             {customCategories.length}
           </span>
         </h3>
@@ -168,7 +168,7 @@ export const Categories: React.FC = () => {
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">Özel Kategori Ekle</h3>
               <button 
                 onClick={() => setIsFormOpen(false)}
-                className="p-1.5 text-slate-450 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
               >
                 <Icons.X size={18} />
               </button>

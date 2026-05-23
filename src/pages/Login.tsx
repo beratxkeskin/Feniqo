@@ -71,7 +71,7 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-900 via-brand-950 to-slate-950 px-4 py-8 relative overflow-hidden transition-all duration-300">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-900 via-brand-900 to-slate-950 px-4 py-8 relative overflow-hidden transition-all duration-300">
       
       {/* Dynamic background bubbles */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl animate-pulse" />
@@ -220,7 +220,7 @@ export const Login: React.FC = () => {
         {/* Demo mode click */}
         <button
           onClick={handleDemoMode}
-          className="w-full py-3.5 px-4 rounded-xl border border-dashed border-slate-600 hover:border-slate-500 bg-slate-800/10 hover:bg-slate-800/20 active:scale-[0.98] text-slate-350 dark:text-slate-350 hover:text-white font-semibold text-xs transition-all flex items-center justify-center space-x-2.5"
+          className="w-full py-3.5 px-4 rounded-xl border border-dashed border-slate-600 hover:border-slate-500 bg-slate-800/10 hover:bg-slate-800/20 active:scale-[0.98] text-slate-400 dark:text-slate-400 hover:text-white font-semibold text-xs transition-all flex items-center justify-center space-x-2.5"
           disabled={localLoading || loading}
           title="Veritabanı bilgileri girmeden, local storage üzerinden zengin test verileriyle uygulamayı anında keşfedin."
         >

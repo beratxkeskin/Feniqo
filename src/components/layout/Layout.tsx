@@ -1,6 +1,7 @@
 import React from 'react';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
+import { OfflineIndicator } from '../common/OfflineIndicator';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -25,8 +26,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentHash, onNavigat
           </div>
         </main>
       </div>
+
+      {/* Çevrimdışı bağlantı göstergesi */}
+      <OfflineIndicator />
     </div>
   );
 };
 
 export default Layout;
+

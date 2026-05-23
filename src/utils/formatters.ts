@@ -100,15 +100,15 @@ export const calculateBudgetProgress = (spent: number, limit: number): number =>
 };
 
 /**
- * YYYY-MM formatındaki ay stringini Türkçe ay adına çevirir.
- * Örn: "2026-05" -> "Mayıs 2026"
+ * YYYY-MM formatındaki ay stringini Türkçe veya İngilizce ay adına çevirir.
+ * Örn: "2026-05" -> "Mayıs 2026" veya "May 2026"
  */
-export const formatMonthName = (monthStr: string): string => {
+export const formatMonthName = (monthStr: string, isEn: boolean = false): string => {
   if (!monthStr || monthStr.length < 7) return monthStr;
   try {
     const [year, month] = monthStr.split('-');
     const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-    return date.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+    return date.toLocaleDateString(isEn ? 'en-US' : 'tr-TR', { month: 'long', year: 'numeric' });
   } catch (e) {
     return monthStr;
   }

@@ -11,7 +11,13 @@ import Transactions from './pages/Transactions';
 import Budgets from './pages/Budgets';
 import Categories from './pages/Categories';
 import Reports from './pages/Reports';
+import Recurring from './pages/Recurring';
 import Settings from './pages/Settings';
+import Goals from './pages/Goals';
+import Debts from './pages/Debts';
+import Subscriptions from './pages/Subscriptions';
+
+
 
 const NavigationRouter: React.FC = () => {
   const { user, loading } = useAuth();
@@ -79,6 +85,14 @@ const NavigationRouter: React.FC = () => {
         return <Budgets />;
       case '#/categories':
         return <Categories />;
+      case '#/recurring':
+        return <Recurring />;
+      case '#/subscriptions':
+        return <Subscriptions />;
+      case '#/goals':
+        return <Goals />;
+      case '#/debts':
+        return <Debts />;
       case '#/reports':
         return <Reports />;
       case '#/settings':

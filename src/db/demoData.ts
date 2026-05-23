@@ -1,4 +1,5 @@
-import type { Category, Transaction, Budget } from './types';
+import type { Category, Transaction, Budget, RecurringTransaction, Goal, Debt, Subscription } from './types';
+
 
 // System Default Categories (Matches SQL exactly)
 export const DEFAULT_CATEGORIES: Category[] = [
@@ -310,3 +311,170 @@ export const generateDemoBudgets = (userId: string): Budget[] => [
     limit_amount: 400
   }
 ];
+
+// Seed Recurring Transactions
+export const generateDemoRecurringTransactions = (userId: string): RecurringTransaction[] => [
+  {
+    id: 'rt-1',
+    user_id: userId,
+    amount: 32000,
+    type: 'income',
+    category_id: 'cat-income-maas',
+    description: 'Şirket Aylık Maaş Ödemesi',
+    payment_method: 'Havale/EFT',
+    frequency: 'monthly',
+    start_date: getRelativeDateStr(90),
+    last_processed_date: getRelativeDateStr(21),
+    is_active: true
+  },
+  {
+    id: 'rt-2',
+    user_id: userId,
+    amount: 8500,
+    type: 'expense',
+    category_id: 'cat-expense-kira',
+    description: 'Ev Kirası',
+    payment_method: 'Havale/EFT',
+    frequency: 'monthly',
+    start_date: getRelativeDateStr(90),
+    last_processed_date: getRelativeDateStr(21),
+    is_active: true
+  },
+  {
+    id: 'rt-3',
+    user_id: userId,
+    amount: 320,
+    type: 'expense',
+    category_id: 'cat-expense-abonelik',
+    description: 'Netflix & Spotify Premium',
+    payment_method: 'Kredi Kartı',
+    frequency: 'monthly',
+    start_date: getRelativeDateStr(90),
+    last_processed_date: getRelativeDateStr(1),
+    is_active: true
+  }
+];
+
+// Seed Savings Goals
+export const generateDemoGoals = (userId: string): Goal[] => [
+  {
+    id: 'g-1',
+    user_id: userId,
+    name: 'Yeni Laptop (MacBook Pro)',
+    target_amount: 40000,
+    current_amount: 12500,
+    target_date: '2026-12-01',
+    color: '#3B82F6', // Blue
+    icon: 'Laptop',
+    created_at: getRelativeDateStr(30)
+  },
+  {
+    id: 'g-2',
+    user_id: userId,
+    name: 'Yaz Tatili (Bodrum)',
+    target_amount: 25000,
+    current_amount: 15000,
+    target_date: '2026-08-15',
+    color: '#10B981', // Emerald/Green
+    icon: 'Palmtree',
+    created_at: getRelativeDateStr(20)
+  },
+  {
+    id: 'g-3',
+    user_id: userId,
+    name: 'Acil Durum Fonu',
+    target_amount: 50000,
+    current_amount: 45000,
+    target_date: '2027-01-01',
+    color: '#8B5CF6', // Purple
+    icon: 'Shield',
+    created_at: getRelativeDateStr(60)
+  }
+];
+
+export const generateDemoDebts = (userId: string): Debt[] => [
+  {
+    id: 'd-1',
+    user_id: userId,
+    title: 'Ahmet Yılmaz (Kuzen)',
+    amount: 5000,
+    type: 'debt',
+    due_date: getRelativeDateStr(-5), // Vade tarihi geçmiş
+    is_paid: false,
+    description: 'Borç alınan harçlık',
+    created_at: getRelativeDateStr(20)
+  },
+  {
+    id: 'd-2',
+    user_id: userId,
+    title: 'Mehmet Demir (Tasarım Müşterisi)',
+    amount: 12500,
+    type: 'receivable',
+    due_date: getRelativeDateStr(10), // Vadeye 10 gün var
+    is_paid: false,
+    description: 'Logo tasarımı kalan ödemesi',
+    created_at: getRelativeDateStr(15)
+  },
+  {
+    id: 'd-3',
+    user_id: userId,
+    title: 'Akbank Kredi Borcu',
+    amount: 7500,
+    type: 'debt',
+    due_date: getRelativeDateStr(-3),
+    is_paid: true,
+    description: 'Mayıs ayı taksiti',
+    created_at: getRelativeDateStr(25)
+  },
+  {
+    id: 'd-4',
+    user_id: userId,
+    title: 'Zeynep Kaya (Freelance Yazılım)',
+    amount: 18000,
+    type: 'receivable',
+    due_date: getRelativeDateStr(-2), // Vade tarihi geçmiş ama ödenmiş
+    is_paid: true,
+    description: 'Landing page yapımı ön ödemesi',
+    created_at: getRelativeDateStr(30)
+  }
+];
+
+export const generateDemoSubscriptions = (userId: string): Subscription[] => [
+  {
+    id: 's-1',
+    user_id: userId,
+    name: 'Netflix Premium',
+    amount: 320,
+    renewal_date: getRelativeDateStr(-1), // Yarın yenilenecek
+    category_id: 'cat-expense-abonelik',
+    is_active: true
+  },
+  {
+    id: 's-2',
+    user_id: userId,
+    name: 'Spotify Family',
+    amount: 79.90,
+    renewal_date: getRelativeDateStr(-10), // 10 gün sonra yenilenecek
+    category_id: 'cat-expense-abonelik',
+    is_active: true
+  },
+  {
+    id: 's-3',
+    user_id: userId,
+    name: 'Superonline Fiber İnternet',
+    amount: 550,
+    renewal_date: getRelativeDateStr(2), // 2 gün önce yenilenmeliydi (Gecikmiş)
+    category_id: 'cat-expense-fatura',
+    is_active: true
+  },
+  {
+    id: 's-4',
+    user_id: userId,
+    name: 'YouTube Premium',
+    amount: 110,
+    renewal_date: getRelativeDateStr(-15), // 15 gün sonra yenilenecek
+    category_id: 'cat-expense-abonelik',
+    is_active: false // Pasif
+  }
+];
+
