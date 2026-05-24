@@ -1,9 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase, isSupabaseConfigured } from '../db/supabaseClient';
-import type { Transaction, Category, Budget, RecurringTransaction, Goal, Debt, Subscription } from '../db/types';
-import { DEFAULT_CATEGORIES, generateDemoTransactions, generateDemoBudgets, generateDemoRecurringTransactions, generateDemoGoals, generateDemoDebts, generateDemoSubscriptions } from '../db/demoData';
+import type { Transaction, Category, Budget, RecurringTransaction, Goal, Debt, Subscription, Workspace, Profile, Asset } from '../db/types';
+import { DEFAULT_CATEGORIES, generateDemoTransactions, generateDemoBudgets, generateDemoRecurringTransactions, generateDemoGoals, generateDemoDebts, generateDemoSubscriptions, generateDemoAssets } from '../db/demoData';
 
+export const extractHashtags = (text?: string): string[] => {
+  if (!text) return [];
+  const matches = text.match(/#[a-zA-Z0-9çıüğöşİĞÜÖŞÇ_]+/g);
+  if (!matches) return [];
+  return Array.from(new Set(matches.map(tag => tag.substring(1).toLowerCase())));
+};
 
 interface DataContextType {
   transactions: Transaction[];
@@ -12,8 +18,17 @@ interface DataContextType {
   recurringTransactions: RecurringTransaction[];
   loadingData: boolean;
   
+  // Workspaces
+  workspaces: Workspace[];
+  activeWorkspace: Workspace | null;
+  workspaceMembers: Profile[];
+  createWorkspace: (name: string) => Promise<{ success: boolean; error?: string; workspace?: Workspace }>;
+  joinWorkspace: (inviteCode: string) => Promise<{ success: boolean; error?: string }>;
+  leaveWorkspace: (workspaceId: string) => Promise<{ success: boolean; error?: string }>;
+  setActiveWorkspace: (workspaceId: string | null) => Promise<void>;
+  
   // Transaction CRUD
-  addTransaction: (tx: Omit<Transaction, 'id' | 'user_id' | 'created_at'>) => Promise<{ success: boolean; error?: string }>;
+  addTransaction: (tx: Omit<Transaction, 'id' | 'user_id' | 'created_at'> & { user_id?: string }) => Promise<{ success: boolean; error?: string }>;
   updateTransaction: (id: string, tx: Partial<Transaction>) => Promise<{ success: boolean; error?: string }>;
   deleteTransaction: (id: string) => Promise<{ success: boolean; error?: string }>;
   
@@ -25,6 +40,7 @@ interface DataContextType {
   // Budget CRUD
   addOrUpdateBudget: (budget: { category_id: string; month: string; limit_amount: number }) => Promise<{ success: boolean; error?: string }>;
   deleteBudget: (id: string) => Promise<{ success: boolean; error?: string }>;
+  copyBudgets: (fromMonth: string, toMonth: string) => Promise<{ success: boolean; error?: string }>;
 
   // Recurring Transaction CRUD
   addRecurringTransaction: (rt: Omit<RecurringTransaction, 'id' | 'user_id' | 'created_at' | 'last_processed_date'>) => Promise<{ success: boolean; error?: string }>;
@@ -53,6 +69,12 @@ interface DataContextType {
   toggleSubscriptionActiveStatus: (id: string) => Promise<{ success: boolean; error?: string }>;
   renewSubscription: (id: string) => Promise<{ success: boolean; error?: string }>;
   
+  // Asset CRUD
+  assets: Asset[];
+  addAsset: (asset: Omit<Asset, 'id' | 'user_id' | 'created_at'>) => Promise<{ success: boolean; error?: string }>;
+  updateAsset: (id: string, asset: Partial<Asset>) => Promise<{ success: boolean; error?: string }>;
+  deleteAsset: (id: string) => Promise<{ success: boolean; error?: string }>;
+  
   // Helpers
   resetAllData: () => Promise<void>;
 }
@@ -60,7 +82,7 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, isDemo } = useAuth();
+  const { user, isDemo, updateProfile } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -68,196 +90,409 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [goals, setGoals] = useState<Goal[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
+  // Workspace States
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [activeWorkspace, setActiveWorkspaceState] = useState<Workspace | null>(null);
+  const [workspaceMembers, setWorkspaceMembers] = useState<Profile[]>([]);
+
   // Fetch all data
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!user) {
-        setTransactions([]);
-        setBudgets([]);
-        setCategories([]);
-        setRecurringTransactions([]);
-        setGoals([]);
-        setDebts([]);
-        setSubscriptions([]);
-        setLoadingData(false);
-        return;
+  const fetchData = async (isSilent = false) => {
+    if (!user) {
+      setTransactions([]);
+      setBudgets([]);
+      setCategories([]);
+      setRecurringTransactions([]);
+      setGoals([]);
+      setDebts([]);
+      setSubscriptions([]);
+      setAssets([]);
+      setWorkspaces([]);
+      setActiveWorkspaceState(null);
+      setWorkspaceMembers([]);
+      setLoadingData(false);
+      return;
+    }
+
+    if (!isSilent) setLoadingData(true);
+
+    if (isDemo) {
+      // --- 1. LOCAL STORAGE DEMO MODE ---
+      // Workspaces
+      let storedWorkspaces = localStorage.getItem('moneymate_demo_workspaces');
+      let currentWorkspaces: Workspace[] = [];
+      if (!storedWorkspaces) {
+        // Pre-seed a default shared family workspace
+        const defaultWorkspace: Workspace = {
+          id: 'demo-workspace-family',
+          name: 'Aile Bütçesi 🏡',
+          invite_code: 'LOVE8888',
+          created_by: user.id,
+          created_at: new Date().toISOString()
+        };
+        currentWorkspaces = [defaultWorkspace];
+        localStorage.setItem('moneymate_demo_workspaces', JSON.stringify(currentWorkspaces));
+      } else {
+        currentWorkspaces = JSON.parse(storedWorkspaces);
+      }
+      setWorkspaces(currentWorkspaces);
+
+      // Active Workspace
+      let currentActive: Workspace | null = null;
+      if (user.active_workspace_id) {
+        currentActive = currentWorkspaces.find(w => w.id === user.active_workspace_id) || null;
+      }
+      setActiveWorkspaceState(currentActive);
+
+      // Members
+      let members: Profile[] = [];
+      if (currentActive) {
+        members = [
+          { id: user.id, email: user.email, currency: user.currency, theme: user.theme, lang: user.lang, active_workspace_id: currentActive.id }
+        ];
+        // Buse (demo partner) should ONLY be in the family budget workspace!
+        if (currentActive.id === 'demo-workspace-family') {
+          members.push({ 
+            id: 'demo-partner-456', 
+            email: 'buse@moneymate.com', 
+            currency: 'TRY', 
+            theme: 'system', 
+            lang: 'tr', 
+            active_workspace_id: currentActive.id 
+          });
+        }
+      }
+      setWorkspaceMembers(members);
+
+      // Categories
+      let storedCats = localStorage.getItem('moneymate_demo_categories');
+      let currentCats: Category[] = [];
+      if (!storedCats) {
+        localStorage.setItem('moneymate_demo_categories', JSON.stringify(DEFAULT_CATEGORIES));
+        currentCats = DEFAULT_CATEGORIES;
+      } else {
+        currentCats = JSON.parse(storedCats);
       }
 
-      setLoadingData(true);
+      // Transactions
+      let storedTxs = localStorage.getItem('moneymate_demo_transactions');
+      let currentTxs: Transaction[] = [];
+      if (!storedTxs) {
+        const demoTxs = generateDemoTransactions(user.id);
+        localStorage.setItem('moneymate_demo_transactions', JSON.stringify(demoTxs));
+        currentTxs = demoTxs;
+      } else {
+        currentTxs = JSON.parse(storedTxs);
+      }
 
-      if (isDemo) {
-        // --- 1. LOCAL STORAGE DEMO MODE ---
-        // Categories
-        let storedCats = localStorage.getItem('moneymate_demo_categories');
-        let currentCats: Category[] = [];
-        if (!storedCats) {
-          localStorage.setItem('moneymate_demo_categories', JSON.stringify(DEFAULT_CATEGORIES));
-          currentCats = DEFAULT_CATEGORIES;
-        } else {
-          currentCats = JSON.parse(storedCats);
+      // Auto seed partner transactions in Family workspace
+      if (currentActive && currentActive.id === 'demo-workspace-family') {
+        const hasPartnerTxs = currentTxs.some(t => t.user_id === 'demo-partner-456');
+        if (!hasPartnerTxs) {
+          const marketCat = currentCats.find(c => c.name === 'Market') || currentCats[1];
+          const faturaCat = currentCats.find(c => c.name === 'Fatura') || currentCats[4];
+          const eglenceCat = currentCats.find(c => c.name === 'Eğlence') || currentCats[5];
+
+          const partnerTxs: Transaction[] = [
+            {
+              id: 'tx-partner-1',
+              user_id: 'demo-partner-456',
+              amount: 1250,
+              type: 'expense',
+              category_id: marketCat.id,
+              description: 'Haftalık Mutfak Alışverişi',
+              payment_method: 'Kredi Kartı',
+              transaction_date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              workspace_id: 'demo-workspace-family'
+            },
+            {
+              id: 'tx-partner-2',
+              user_id: 'demo-partner-456',
+              amount: 850,
+              type: 'expense',
+              category_id: faturaCat.id,
+              description: 'Elektrik Faturası',
+              payment_method: 'Havale/EFT',
+              transaction_date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              workspace_id: 'demo-workspace-family'
+            },
+            {
+              id: 'tx-partner-3',
+              user_id: 'demo-partner-456',
+              amount: 400,
+              type: 'expense',
+              category_id: eglenceCat.id,
+              description: 'Haftasonu Sinema Keyfi',
+              payment_method: 'Nakit',
+              transaction_date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              workspace_id: 'demo-workspace-family'
+            }
+          ];
+          currentTxs = [...partnerTxs, ...currentTxs];
+          localStorage.setItem('moneymate_demo_transactions', JSON.stringify(currentTxs));
         }
-        setCategories(currentCats);
+      }
 
-        // Transactions
-        let storedTxs = localStorage.getItem('moneymate_demo_transactions');
-        let currentTxs: Transaction[] = [];
-        if (!storedTxs) {
-          const demoTxs = generateDemoTransactions(user.id);
-          localStorage.setItem('moneymate_demo_transactions', JSON.stringify(demoTxs));
-          currentTxs = demoTxs;
+      // Filter by Workspace and automatically populate parsed hashtags if they don't have tags array yet
+      let filteredTxs = currentTxs.filter(t => currentActive ? t.workspace_id === currentActive.id : !t.workspace_id);
+      const mappedTxs = filteredTxs.map(t => ({
+        ...t,
+        tags: t.tags || extractHashtags(t.description)
+      }));
+      setTransactions(mappedTxs);
+
+      let filteredCats = currentCats.filter(c => currentActive ? c.workspace_id === currentActive.id || c.is_default : !c.workspace_id || c.is_default);
+      setCategories(filteredCats);
+
+      let storedBudgets = localStorage.getItem('moneymate_demo_budgets');
+      let currentBudgets = storedBudgets ? JSON.parse(storedBudgets) : generateDemoBudgets(user.id);
+      let filteredBudgets = currentBudgets.filter((b: any) => currentActive ? b.workspace_id === currentActive.id : !b.workspace_id);
+      setBudgets(filteredBudgets);
+
+      let storedRts = localStorage.getItem('moneymate_demo_recurring');
+      let currentRts = storedRts ? JSON.parse(storedRts) : generateDemoRecurringTransactions(user.id);
+      let filteredRts = currentRts.filter((rt: any) => currentActive ? rt.workspace_id === currentActive.id : !rt.workspace_id);
+      setRecurringTransactions(filteredRts);
+
+      let storedGoals = localStorage.getItem('moneymate_demo_goals');
+      let currentGoals = storedGoals ? JSON.parse(storedGoals) : generateDemoGoals(user.id);
+      let filteredGoals = currentGoals.filter((g: any) => currentActive ? g.workspace_id === currentActive.id : !g.workspace_id);
+      setGoals(filteredGoals);
+
+      let storedDebts = localStorage.getItem('moneymate_demo_debts');
+      let currentDebts = storedDebts ? JSON.parse(storedDebts) : generateDemoDebts(user.id);
+      let filteredDebts = currentDebts.filter((d: any) => currentActive ? d.workspace_id === currentActive.id : !d.workspace_id);
+      setDebts(filteredDebts);
+
+      let storedSubs = localStorage.getItem('moneymate_demo_subscriptions');
+      let currentSubs = storedSubs ? JSON.parse(storedSubs) : generateDemoSubscriptions(user.id);
+      let filteredSubs = currentSubs.filter((s: any) => currentActive ? s.workspace_id === currentActive.id : !s.workspace_id);
+      setSubscriptions(filteredSubs);
+
+      let storedAssets = localStorage.getItem('moneymate_demo_assets');
+      let currentAssets = storedAssets ? JSON.parse(storedAssets) : generateDemoAssets(user.id);
+      let filteredAssets = currentAssets.filter((a: any) => currentActive ? a.workspace_id === currentActive.id : !a.workspace_id);
+      setAssets(filteredAssets);
+
+      await processCatchUp(filteredRts, filteredTxs, true);
+
+    } else if (isSupabaseConfigured && supabase) {
+      // --- 2. SUPABASE PRODUCTION MODE ---
+      try {
+        // Fetch workspaces
+        const { data: wsMemberships, error: wsMembershipsErr } = await supabase
+          .from('workspace_members')
+          .select('workspace_id, workspaces(*)');
+
+        if (wsMembershipsErr) throw wsMembershipsErr;
+
+        const userWorkspaces = (wsMemberships || []).map((m: any) => m.workspaces).filter(Boolean) as Workspace[];
+        setWorkspaces(userWorkspaces);
+
+        // Get active workspace
+        const activeWorkspaceId = user.active_workspace_id;
+        const currentActive = userWorkspaces.find(w => w.id === activeWorkspaceId) || null;
+        setActiveWorkspaceState(currentActive);
+
+        // Fetch active workspace members
+        if (currentActive) {
+          const { data: memberProfiles, error: membersErr } = await supabase
+            .from('workspace_members')
+            .select('user_id')
+            .eq('workspace_id', currentActive.id);
+          
+          if (membersErr) throw membersErr;
+          const memberIds = (memberProfiles || []).map((m: any) => m.user_id);
+
+          const { data: profilesData } = await supabase
+            .from('profiles')
+            .select('*')
+            .in('id', memberIds);
+
+          setWorkspaceMembers(profilesData || []);
         } else {
-          currentTxs = JSON.parse(storedTxs);
+          setWorkspaceMembers([]);
         }
-        setTransactions(currentTxs);
 
-        // Budgets
-        let storedBudgets = localStorage.getItem('moneymate_demo_budgets');
-        let currentBudgets: Budget[] = [];
-        if (!storedBudgets) {
-          const demoBudgets = generateDemoBudgets(user.id);
-          localStorage.setItem('moneymate_demo_budgets', JSON.stringify(demoBudgets));
-          currentBudgets = demoBudgets;
-        } else {
-          currentBudgets = JSON.parse(storedBudgets);
-        }
-        setBudgets(currentBudgets);
-
-        // Recurring Transactions
-        let storedRts = localStorage.getItem('moneymate_demo_recurring');
-        let currentRts: RecurringTransaction[] = [];
-        if (!storedRts) {
-          const demoRts = generateDemoRecurringTransactions(user.id);
-          localStorage.setItem('moneymate_demo_recurring', JSON.stringify(demoRts));
-          currentRts = demoRts;
-        } else {
-          currentRts = JSON.parse(storedRts);
-        }
-        setRecurringTransactions(currentRts);
-
-        // Goals
-        let storedGoals = localStorage.getItem('moneymate_demo_goals');
-        let currentGoals: Goal[] = [];
-        if (!storedGoals) {
-          const demoGoals = generateDemoGoals(user.id);
-          localStorage.setItem('moneymate_demo_goals', JSON.stringify(demoGoals));
-          currentGoals = demoGoals;
-        } else {
-          currentGoals = JSON.parse(storedGoals);
-        }
-        setGoals(currentGoals);
-
-        // Debts
-        let storedDebts = localStorage.getItem('moneymate_demo_debts');
-        let currentDebts: Debt[] = [];
-        if (!storedDebts) {
-          const demoDebts = generateDemoDebts(user.id);
-          localStorage.setItem('moneymate_demo_debts', JSON.stringify(demoDebts));
-          currentDebts = demoDebts;
-        } else {
-          currentDebts = JSON.parse(storedDebts);
-        }
-        setDebts(currentDebts);
-
-        // Subscriptions
-        let storedSubs = localStorage.getItem('moneymate_demo_subscriptions');
-        let currentSubs: Subscription[] = [];
-        if (!storedSubs) {
-          const demoSubs = generateDemoSubscriptions(user.id);
-          localStorage.setItem('moneymate_demo_subscriptions', JSON.stringify(demoSubs));
-          currentSubs = demoSubs;
-        } else {
-          currentSubs = JSON.parse(storedSubs);
-        }
-        setSubscriptions(currentSubs);
-
-        // --- CATCH UP LOGIC (Demo) ---
-        await processCatchUp(currentRts, currentTxs, true);
-
-      } else if (isSupabaseConfigured && supabase) {
-        // --- 2. SUPABASE PRODUCTION MODE ---
-        try {
-          // Fetch categories (defaults + user custom)
-          const { data: catData, error: catErr } = await supabase
+        // Fetch Categories (default + workspace/personal custom)
+        let catData;
+        if (currentActive) {
+          const { data, error } = await supabase
             .from('categories')
             .select('*')
-            .or(`user_id.eq.${user.id},user_id.is.null`);
-            
-          if (catErr) throw catErr;
-          setCategories(catData || []);
-
-          // Fetch transactions
-          const { data: txData, error: txErr } = await supabase
-            .from('transactions')
+            .or(`workspace_id.eq.${currentActive.id},is_default.eq.true`);
+          if (error) throw error;
+          catData = data;
+        } else {
+          const { data, error } = await supabase
+            .from('categories')
             .select('*')
-            .eq('user_id', user.id)
-            .order('transaction_date', { ascending: false });
-            
-          if (txErr) throw txErr;
-          setTransactions(txData || []);
-
-          // Fetch budgets
-          const { data: budgetData, error: budgetErr } = await supabase
-            .from('budgets')
-            .select('*')
-            .eq('user_id', user.id);
-            
-          if (budgetErr) throw budgetErr;
-          setBudgets(budgetData || []);
-
-          // Fetch recurring transactions
-          const { data: rtData, error: rtErr } = await supabase
-            .from('recurring_transactions')
-            .select('*')
-            .eq('user_id', user.id);
-
-          if (rtErr) throw rtErr;
-          setRecurringTransactions(rtData || []);
-
-          // Fetch goals
-          const { data: goalData, error: goalErr } = await supabase
-            .from('goals')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false });
-            
-          if (goalErr) throw goalErr;
-          setGoals(goalData || []);
-
-          // Fetch debts
-          const { data: debtData, error: debtErr } = await supabase
-            .from('debts')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('due_date', { ascending: true });
-            
-          if (debtErr) throw debtErr;
-          setDebts(debtData || []);
-
-          // Fetch subscriptions
-          const { data: subData, error: subErr } = await supabase
-            .from('subscriptions')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('renewal_date', { ascending: true });
-            
-          if (subErr) throw subErr;
-          setSubscriptions(subData || []);
-
-          // --- CATCH UP LOGIC (Supabase) ---
-          await processCatchUp(rtData || [], txData || [], false);
-
-        } catch (e) {
-          console.error("Error loading Supabase data", e);
+            .or(`and(user_id.eq.${user.id},workspace_id.is.null),is_default.eq.true`);
+          if (error) throw error;
+          catData = data;
         }
+        setCategories(catData || []);
+
+        // Fetch Transactions
+        let txQuery = supabase.from('transactions').select('*, transaction_tags(tags(name))');
+        if (currentActive) {
+          txQuery = txQuery.eq('workspace_id', currentActive.id);
+        } else {
+          txQuery = txQuery.eq('user_id', user.id).is('workspace_id', null);
+        }
+        const { data: txData, error: txErr } = await txQuery.order('transaction_date', { ascending: false });
+        if (txErr) throw txErr;
+        
+        const mappedSupabaseTxs = (txData || []).map((t: any) => ({
+          ...t,
+          tags: t.transaction_tags 
+            ? t.transaction_tags.map((tt: any) => tt.tags?.name).filter(Boolean) 
+            : []
+        }));
+        setTransactions(mappedSupabaseTxs);
+
+        // Fetch Budgets
+        let budgetQuery = supabase.from('budgets').select('*');
+        if (currentActive) {
+          budgetQuery = budgetQuery.eq('workspace_id', currentActive.id);
+        } else {
+          budgetQuery = budgetQuery.eq('user_id', user.id).is('workspace_id', null);
+        }
+        const { data: budgetData, error: budgetErr } = await budgetQuery;
+        if (budgetErr) throw budgetErr;
+        setBudgets(budgetData || []);
+
+        // Fetch Recurring Transactions
+        let rtQuery = supabase.from('recurring_transactions').select('*');
+        if (currentActive) {
+          rtQuery = rtQuery.eq('workspace_id', currentActive.id);
+        } else {
+          rtQuery = rtQuery.eq('user_id', user.id).is('workspace_id', null);
+        }
+        const { data: rtData, error: rtErr } = await rtQuery;
+        if (rtErr) throw rtErr;
+        setRecurringTransactions(rtData || []);
+
+        // Fetch Goals
+        let goalQuery = supabase.from('goals').select('*');
+        if (currentActive) {
+          goalQuery = goalQuery.eq('workspace_id', currentActive.id);
+        } else {
+          goalQuery = goalQuery.eq('user_id', user.id).is('workspace_id', null);
+        }
+        const { data: goalData, error: goalErr } = await goalQuery.order('created_at', { ascending: false });
+        if (goalErr) throw goalErr;
+        setGoals(goalData || []);
+
+        // Fetch Debts
+        let debtQuery = supabase.from('debts').select('*');
+        if (currentActive) {
+          debtQuery = debtQuery.eq('workspace_id', currentActive.id);
+        } else {
+          debtQuery = debtQuery.eq('user_id', user.id).is('workspace_id', null);
+        }
+        const { data: debtData, error: debtErr } = await debtQuery.order('due_date', { ascending: true });
+        if (debtErr) throw debtErr;
+        setDebts(debtData || []);
+
+        // Fetch Subscriptions
+        let subQuery = supabase.from('subscriptions').select('*');
+        if (currentActive) {
+          subQuery = subQuery.eq('workspace_id', currentActive.id);
+        } else {
+          subQuery = subQuery.eq('user_id', user.id).is('workspace_id', null);
+        }
+        const { data: subData, error: subErr } = await subQuery.order('renewal_date', { ascending: true });
+        if (subErr) throw subErr;
+        setSubscriptions(subData || []);
+
+        // Fetch Assets
+        let assetQuery = supabase.from('assets').select('*');
+        if (currentActive) {
+          assetQuery = assetQuery.eq('workspace_id', currentActive.id);
+        } else {
+          assetQuery = assetQuery.eq('user_id', user.id).is('workspace_id', null);
+        }
+        const { data: assetData, error: assetErr } = await assetQuery.order('created_at', { ascending: false });
+        if (assetErr) throw assetErr;
+        setAssets(assetData || []);
+
+        await processCatchUp(rtData || [], txData || [], false);
+
+      } catch (e) {
+        console.error("Error loading Supabase collaborative data", e);
       }
+    }
 
-      setLoadingData(false);
+    setLoadingData(false);
+  };
+
+  // Helper for silent background refresh
+  const silentRefresh = () => fetchData(true);
+
+  // Trigger reactive fetch
+  useEffect(() => {
+    fetchData(false);
+  }, [user, isDemo, user?.active_workspace_id]);
+
+  // Supabase Real-Time Subscriptions
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase || !user || isDemo || !activeWorkspace) return;
+
+    const channelName = `workspace-sync-${activeWorkspace.id}`;
+    
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'transactions', filter: `workspace_id=eq.${activeWorkspace.id}` },
+        () => silentRefresh()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'categories', filter: `workspace_id=eq.${activeWorkspace.id}` },
+        () => silentRefresh()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'budgets', filter: `workspace_id=eq.${activeWorkspace.id}` },
+        () => silentRefresh()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'recurring_transactions', filter: `workspace_id=eq.${activeWorkspace.id}` },
+        () => silentRefresh()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'goals', filter: `workspace_id=eq.${activeWorkspace.id}` },
+        () => silentRefresh()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'debts', filter: `workspace_id=eq.${activeWorkspace.id}` },
+        () => silentRefresh()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'subscriptions', filter: `workspace_id=eq.${activeWorkspace.id}` },
+        () => silentRefresh()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'assets', filter: `workspace_id=eq.${activeWorkspace.id}` },
+        () => silentRefresh()
+      )
+      .subscribe();
+
+    return () => {
+      if (supabase) {
+        supabase.removeChannel(channel);
+      }
     };
-
-    fetchData();
-  }, [user, isDemo]);
+  }, [user?.active_workspace_id, activeWorkspace?.id, isDemo]);
 
   // ==========================================
   // CATCH-UP LOGIC FOR RECURRING TRANSACTIONS
@@ -349,19 +584,25 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // TRANSACTION CRUD
   // ==========================================
 
-  const addTransaction = async (tx: Omit<Transaction, 'id' | 'user_id' | 'created_at'>) => {
+  const addTransaction = async (tx: Omit<Transaction, 'id' | 'user_id' | 'created_at'> & { user_id?: string }) => {
     if (!user) return { success: false, error: 'Oturum açılmadı.' };
 
+    const parsedTags = extractHashtags(tx.description);
     const newTx: Transaction = {
       ...tx,
       id: isDemo ? `tx-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` : '',
-      user_id: user.id,
+      user_id: tx.user_id || user.id,
+      workspace_id: activeWorkspace?.id || null,
+      tags: parsedTags,
     };
 
     if (isDemo) {
-      const updated = [newTx, ...transactions];
-      localStorage.setItem('moneymate_demo_transactions', JSON.stringify(updated));
-      setTransactions(updated);
+      const storedTxs = localStorage.getItem('moneymate_demo_transactions');
+      const allTxs: Transaction[] = storedTxs ? JSON.parse(storedTxs) : [];
+      const updatedAll = [newTx, ...allTxs];
+      localStorage.setItem('moneymate_demo_transactions', JSON.stringify(updatedAll));
+      
+      setTransactions([newTx, ...transactions]);
       return { success: true };
     }
 
@@ -376,13 +617,56 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             description: newTx.description,
             payment_method: newTx.payment_method,
             transaction_date: newTx.transaction_date,
-            user_id: user.id,
+            receipt_url: newTx.receipt_url,
+            user_id: newTx.user_id,
+            workspace_id: newTx.workspace_id,
           })
           .select()
           .single();
 
         if (error) throw error;
-        setTransactions([data, ...transactions]);
+
+        // Save transaction tags
+        if (parsedTags.length > 0) {
+          for (const tagName of parsedTags) {
+            let tagId = '';
+            // Check if tag exists
+            const { data: existingTag } = await supabase
+              .from('tags')
+              .select('id')
+              .eq('name', tagName)
+              .eq('user_id', newTx.user_id)
+              .maybeSingle();
+
+            if (existingTag) {
+              tagId = existingTag.id;
+            } else {
+              // Insert tag
+              const { data: newTag } = await supabase
+                .from('tags')
+                .insert({
+                  name: tagName,
+                  user_id: newTx.user_id,
+                  workspace_id: newTx.workspace_id
+                })
+                .select('id')
+                .single();
+              if (newTag) tagId = newTag.id;
+            }
+
+            if (tagId) {
+              await supabase
+                .from('transaction_tags')
+                .insert({
+                  transaction_id: data.id,
+                  tag_id: tagId
+                });
+            }
+          }
+        }
+
+        const finalTx = { ...data, tags: parsedTags };
+        setTransactions([finalTx, ...transactions]);
         return { success: true };
       } catch (error: any) {
         return { success: false, error: error.message || 'İşlem eklenemedi.' };
@@ -392,10 +676,30 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateTransaction = async (id: string, updatedFields: Partial<Transaction>) => {
+    if (!user) return { success: false, error: 'Oturum açılmadı.' };
+    const parsedTags = updatedFields.description !== undefined ? extractHashtags(updatedFields.description) : undefined;
+    
     if (isDemo) {
-      const updated = transactions.map(t => (t.id === id ? { ...t, ...updatedFields } : t));
-      localStorage.setItem('moneymate_demo_transactions', JSON.stringify(updated));
-      setTransactions(updated);
+      const storedTxs = localStorage.getItem('moneymate_demo_transactions');
+      const allTxs: Transaction[] = storedTxs ? JSON.parse(storedTxs) : [];
+      const updatedAll = allTxs.map(t => {
+        if (t.id === id) {
+          const merged = { ...t, ...updatedFields };
+          if (parsedTags !== undefined) merged.tags = parsedTags;
+          return merged;
+        }
+        return t;
+      });
+      localStorage.setItem('moneymate_demo_transactions', JSON.stringify(updatedAll));
+      
+      setTransactions(transactions.map(t => {
+        if (t.id === id) {
+          const merged = { ...t, ...updatedFields };
+          if (parsedTags !== undefined) merged.tags = parsedTags;
+          return merged;
+        }
+        return t;
+      }));
       return { success: true };
     }
 
@@ -410,13 +714,61 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             description: updatedFields.description,
             payment_method: updatedFields.payment_method,
             transaction_date: updatedFields.transaction_date,
+            receipt_url: updatedFields.receipt_url,
           })
           .eq('id', id)
           .select()
           .single();
 
         if (error) throw error;
-        setTransactions(transactions.map(t => (t.id === id ? data : t)));
+
+        // If description is updated, update the tags too
+        if (parsedTags !== undefined) {
+          // Clear old transaction tags
+          await supabase.from('transaction_tags').delete().eq('transaction_id', id);
+
+          // Write new tags
+          for (const tagName of parsedTags) {
+            let tagId = '';
+            const { data: existingTag } = await supabase
+              .from('tags')
+              .select('id')
+              .eq('name', tagName)
+              .eq('user_id', user.id)
+              .maybeSingle();
+
+            if (existingTag) {
+              tagId = existingTag.id;
+            } else {
+              const { data: newTag } = await supabase
+                .from('tags')
+                .insert({
+                  name: tagName,
+                  user_id: user.id,
+                  workspace_id: data.workspace_id
+                })
+                .select('id')
+                .single();
+              if (newTag) tagId = newTag.id;
+            }
+
+            if (tagId) {
+              await supabase
+                .from('transaction_tags')
+                .insert({
+                  transaction_id: id,
+                  tag_id: tagId
+                });
+            }
+          }
+        }
+
+        const finalTx = { 
+          ...data, 
+          tags: parsedTags !== undefined ? parsedTags : (transactions.find(t => t.id === id)?.tags || [])
+        };
+        
+        setTransactions(transactions.map(t => (t.id === id ? finalTx : t)));
         return { success: true };
       } catch (error: any) {
         return { success: false, error: error.message || 'İşlem güncellenemedi.' };
@@ -427,9 +779,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteTransaction = async (id: string) => {
     if (isDemo) {
-      const updated = transactions.filter(t => t.id !== id);
-      localStorage.setItem('moneymate_demo_transactions', JSON.stringify(updated));
-      setTransactions(updated);
+      const storedTxs = localStorage.getItem('moneymate_demo_transactions');
+      const allTxs: Transaction[] = storedTxs ? JSON.parse(storedTxs) : [];
+      const updatedAll = allTxs.filter(t => t.id !== id);
+      localStorage.setItem('moneymate_demo_transactions', JSON.stringify(updatedAll));
+      
+      setTransactions(transactions.filter(t => t.id !== id));
       return { success: true };
     }
 
@@ -458,12 +813,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: isDemo ? `cat-${Date.now()}` : '',
       user_id: user.id,
       is_default: false,
+      workspace_id: activeWorkspace?.id || null,
     };
 
     if (isDemo) {
-      const updated = [...categories, newCat];
-      localStorage.setItem('moneymate_demo_categories', JSON.stringify(updated));
-      setCategories(updated);
+      const storedCats = localStorage.getItem('moneymate_demo_categories');
+      const allCats: Category[] = storedCats ? JSON.parse(storedCats) : DEFAULT_CATEGORIES;
+      const updatedAll = [...allCats, newCat];
+      localStorage.setItem('moneymate_demo_categories', JSON.stringify(updatedAll));
+      
+      setCategories([...categories, newCat]);
       return { success: true };
     }
 
@@ -478,6 +837,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             icon: newCat.icon,
             user_id: user.id,
             is_default: false,
+            workspace_id: newCat.workspace_id,
           })
           .select()
           .single();
@@ -494,9 +854,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateCategory = async (id: string, updatedFields: Partial<Category>) => {
     if (isDemo) {
-      const updated = categories.map(c => (c.id === id ? { ...c, ...updatedFields } : c));
-      localStorage.setItem('moneymate_demo_categories', JSON.stringify(updated));
-      setCategories(updated);
+      const storedCats = localStorage.getItem('moneymate_demo_categories');
+      const allCats: Category[] = storedCats ? JSON.parse(storedCats) : DEFAULT_CATEGORIES;
+      const updatedAll = allCats.map(c => (c.id === id ? { ...c, ...updatedFields } : c));
+      localStorage.setItem('moneymate_demo_categories', JSON.stringify(updatedAll));
+      
+      setCategories(categories.map(c => (c.id === id ? { ...c, ...updatedFields } : c)));
       return { success: true };
     }
 
@@ -531,9 +894,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (isDemo) {
-      const updated = categories.filter(c => c.id !== id);
-      localStorage.setItem('moneymate_demo_categories', JSON.stringify(updated));
-      setCategories(updated);
+      const storedCats = localStorage.getItem('moneymate_demo_categories');
+      const allCats: Category[] = storedCats ? JSON.parse(storedCats) : DEFAULT_CATEGORIES;
+      const updatedAll = allCats.filter(c => c.id !== id);
+      localStorage.setItem('moneymate_demo_categories', JSON.stringify(updatedAll));
+      
+      setCategories(categories.filter(c => c.id !== id));
       return { success: true };
     }
 
@@ -614,6 +980,69 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: error.message || 'Bütçe kaydedilemedi.' };
       }
     }
+    return { success: false, error: 'Sunucu hatası.' };
+  };
+
+  const copyBudgets = async (fromMonth: string, toMonth: string) => {
+    if (!user) return { success: false, error: 'Oturum açılmadı.' };
+
+    const sourceBudgets = budgets.filter(b => b.month === fromMonth);
+    if (sourceBudgets.length === 0) {
+      return { success: false, error: 'Kopyalanacak bütçe bulunamadı.' };
+    }
+
+    if (isDemo) {
+      const cleanBudgets = budgets.filter(b => b.month !== toMonth);
+      
+      const newBudgets: Budget[] = sourceBudgets.map((b, idx) => ({
+        id: `b-copy-${Date.now()}-${idx}`,
+        user_id: user.id,
+        category_id: b.category_id,
+        month: toMonth,
+        limit_amount: b.limit_amount,
+        workspace_id: activeWorkspace?.id || null,
+      }));
+
+      const updated = [...cleanBudgets, ...newBudgets];
+      localStorage.setItem('moneymate_demo_budgets', JSON.stringify(updated));
+      setBudgets(updated);
+      return { success: true };
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error: deleteError } = await supabase
+          .from('budgets')
+          .delete()
+          .eq('month', toMonth)
+          .eq('user_id', user.id);
+
+        if (deleteError) throw deleteError;
+
+        const insertPayload = sourceBudgets.map(b => ({
+          user_id: user.id,
+          category_id: b.category_id,
+          month: toMonth,
+          limit_amount: b.limit_amount,
+          workspace_id: activeWorkspace?.id || null,
+        }));
+
+        const { data, error: insertError } = await supabase
+          .from('budgets')
+          .insert(insertPayload)
+          .select();
+
+        if (insertError) throw insertError;
+
+        const otherBudgets = budgets.filter(b => b.month !== toMonth);
+        setBudgets([...otherBudgets, ...data]);
+
+        return { success: true };
+      } catch (error: any) {
+        return { success: false, error: error.message || 'Bütçeler kopyalanamadı.' };
+      }
+    }
+
     return { success: false, error: 'Sunucu hatası.' };
   };
 
@@ -1099,6 +1528,108 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // ==========================================
+  // ASSET CRUD
+  // ==========================================
+
+  const addAsset = async (asset: Omit<Asset, 'id' | 'user_id' | 'created_at'>) => {
+    if (!user) return { success: false, error: 'Oturum açılmadı.' };
+
+    const newAsset: Asset = {
+      ...asset,
+      id: isDemo ? `ast-${Date.now()}` : '',
+      user_id: user.id,
+      workspace_id: activeWorkspace?.id || null,
+      created_at: new Date().toISOString(),
+    };
+
+    if (isDemo) {
+      const updated = [newAsset, ...assets];
+      localStorage.setItem('moneymate_demo_assets', JSON.stringify(updated));
+      setAssets(updated);
+      return { success: true };
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('assets')
+          .insert({
+            name: newAsset.name,
+            type: newAsset.type,
+            value: newAsset.value,
+            quantity: newAsset.quantity,
+            purchase_price: newAsset.purchase_price,
+            user_id: user.id,
+            workspace_id: activeWorkspace?.id || null,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        setAssets([data, ...assets]);
+        return { success: true };
+      } catch (error: any) {
+        return { success: false, error: error.message || 'Varlık eklenemedi.' };
+      }
+    }
+    return { success: false, error: 'Sunucu hatası.' };
+  };
+
+  const updateAsset = async (id: string, updatedFields: Partial<Asset>) => {
+    if (isDemo) {
+      const updated = assets.map(a => (a.id === id ? { ...a, ...updatedFields } : a));
+      localStorage.setItem('moneymate_demo_assets', JSON.stringify(updated));
+      setAssets(updated);
+      return { success: true };
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('assets')
+          .update({
+            name: updatedFields.name,
+            type: updatedFields.type,
+            value: updatedFields.value,
+            quantity: updatedFields.quantity,
+            purchase_price: updatedFields.purchase_price,
+          })
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        setAssets(assets.map(a => (a.id === id ? data : a)));
+        return { success: true };
+      } catch (error: any) {
+        return { success: false, error: error.message || 'Varlık güncellenemedi.' };
+      }
+    }
+    return { success: false, error: 'Sunucu hatası.' };
+  };
+
+  const deleteAsset = async (id: string) => {
+    if (isDemo) {
+      const updated = assets.filter(a => a.id !== id);
+      localStorage.setItem('moneymate_demo_assets', JSON.stringify(updated));
+      setAssets(updated);
+      return { success: true };
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase.from('assets').delete().eq('id', id);
+        if (error) throw error;
+        setAssets(assets.filter(a => a.id !== id));
+        return { success: true };
+      } catch (error: any) {
+        return { success: false, error: error.message || 'Varlık silinemedi.' };
+      }
+    }
+    return { success: false, error: 'Sunucu hatası.' };
+  };
+
+  // ==========================================
   // RESET ALL DATA
   // ==========================================
 
@@ -1113,6 +1644,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('moneymate_demo_goals');
       localStorage.removeItem('moneymate_demo_debts');
       localStorage.removeItem('moneymate_demo_subscriptions');
+      localStorage.removeItem('moneymate_demo_assets');
       
       // Reload demo data defaults
       const demoTxs = generateDemoTransactions(user.id);
@@ -1121,6 +1653,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const demoGoals = generateDemoGoals(user.id);
       const demoDebts = generateDemoDebts(user.id);
       const demoSubs = generateDemoSubscriptions(user.id);
+      const demoAssets = generateDemoAssets(user.id);
       localStorage.setItem('moneymate_demo_transactions', JSON.stringify(demoTxs));
       localStorage.setItem('moneymate_demo_budgets', JSON.stringify(demoBudgets));
       localStorage.setItem('moneymate_demo_categories', JSON.stringify(DEFAULT_CATEGORIES));
@@ -1128,6 +1661,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('moneymate_demo_goals', JSON.stringify(demoGoals));
       localStorage.setItem('moneymate_demo_debts', JSON.stringify(demoDebts));
       localStorage.setItem('moneymate_demo_subscriptions', JSON.stringify(demoSubs));
+      localStorage.setItem('moneymate_demo_assets', JSON.stringify(demoAssets));
       
       setTransactions(demoTxs);
       setBudgets(demoBudgets);
@@ -1136,6 +1670,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setGoals(demoGoals);
       setDebts(demoDebts);
       setSubscriptions(demoSubs);
+      setAssets(demoAssets);
     } else if (isSupabaseConfigured && supabase) {
       try {
         // Delete all transactions
@@ -1150,6 +1685,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await supabase.from('debts').delete().eq('user_id', user.id);
         // Delete all subscriptions
         await supabase.from('subscriptions').delete().eq('user_id', user.id);
+        // Delete all assets
+        await supabase.from('assets').delete().eq('user_id', user.id);
         // Delete custom categories
         await supabase.from('categories').delete().eq('user_id', user.id);
         
@@ -1160,6 +1697,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setGoals([]);
         setDebts([]);
         setSubscriptions([]);
+        setAssets([]);
         
         // Fetch default categories
         const { data: catData } = await supabase
@@ -1173,6 +1711,155 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // ==========================================
+  // WORKSPACE COLLABORATION METHODS
+  // ==========================================
+
+  const setActiveWorkspace = async (workspaceId: string | null) => {
+    const { success, error } = await updateProfile({ active_workspace_id: workspaceId });
+    if (!success) {
+      console.error("Error setting active workspace:", error);
+    }
+  };
+
+  const createWorkspace = async (name: string) => {
+    if (!user) return { success: false, error: 'Oturum açılmadı.' };
+
+    if (isDemo) {
+      const newWorkspace: Workspace = {
+        id: `demo-workspace-${Date.now()}`,
+        name,
+        invite_code: Math.random().toString(36).substring(2, 10).toUpperCase(),
+        created_by: user.id,
+        created_at: new Date().toISOString()
+      };
+      
+      const storedWorkspaces = localStorage.getItem('moneymate_demo_workspaces');
+      const list = storedWorkspaces ? JSON.parse(storedWorkspaces) : [];
+      list.push(newWorkspace);
+      localStorage.setItem('moneymate_demo_workspaces', JSON.stringify(list));
+      
+      setWorkspaces(list);
+      await setActiveWorkspace(newWorkspace.id);
+      return { success: true, workspace: newWorkspace };
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: ws, error: wsErr } = await supabase
+          .from('workspaces')
+          .insert({ name, created_by: user.id })
+          .select()
+          .single();
+
+        if (wsErr) throw wsErr;
+
+        const { error: memberErr } = await supabase
+          .from('workspace_members')
+          .insert({ workspace_id: ws.id, user_id: user.id, role: 'owner' });
+
+        if (memberErr) throw memberErr;
+
+        await setActiveWorkspace(ws.id);
+        return { success: true, workspace: ws };
+      } catch (e: any) {
+        return { success: false, error: e.message || 'Ortak bütçe oluşturulamadı.' };
+      }
+    }
+    return { success: false, error: 'Sunucu hatası.' };
+  };
+
+  const joinWorkspace = async (inviteCode: string) => {
+    if (!user) return { success: false, error: 'Oturum açılmadı.' };
+
+    const formattedCode = inviteCode.trim().toUpperCase();
+
+    if (isDemo) {
+      const storedWorkspaces = localStorage.getItem('moneymate_demo_workspaces');
+      const list: Workspace[] = storedWorkspaces ? JSON.parse(storedWorkspaces) : [];
+      
+      let ws = list.find(w => w.invite_code === formattedCode);
+      if (!ws) {
+        ws = {
+          id: `demo-workspace-${Date.now()}`,
+          name: 'Katılınan Bütçe 🏡',
+          invite_code: formattedCode,
+          created_by: 'another-user',
+          created_at: new Date().toISOString()
+        };
+        list.push(ws);
+        localStorage.setItem('moneymate_demo_workspaces', JSON.stringify(list));
+        setWorkspaces(list);
+      }
+
+      await setActiveWorkspace(ws.id);
+      return { success: true };
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: ws, error: wsErr } = await supabase
+          .from('workspaces')
+          .select('*')
+          .eq('invite_code', formattedCode)
+          .single();
+
+        if (wsErr || !ws) throw new Error('Geçersiz davet kodu.');
+
+        const { error: memberErr } = await supabase
+          .from('workspace_members')
+          .insert({ workspace_id: ws.id, user_id: user.id, role: 'member' });
+
+        if (memberErr && !memberErr.message.includes('duplicate key')) {
+          throw memberErr;
+        }
+
+        await setActiveWorkspace(ws.id);
+        return { success: true };
+      } catch (e: any) {
+        return { success: false, error: e.message || 'Bütçeye katılırken hata oluştu.' };
+      }
+    }
+    return { success: false, error: 'Sunucu hatası.' };
+  };
+
+  const leaveWorkspace = async (workspaceId: string) => {
+    if (!user) return { success: false, error: 'Oturum açılmadı.' };
+
+    if (isDemo) {
+      const storedWorkspaces = localStorage.getItem('moneymate_demo_workspaces');
+      let list: Workspace[] = storedWorkspaces ? JSON.parse(storedWorkspaces) : [];
+      list = list.filter(w => w.id !== workspaceId);
+      localStorage.setItem('moneymate_demo_workspaces', JSON.stringify(list));
+      setWorkspaces(list);
+
+      if (user.active_workspace_id === workspaceId) {
+        await setActiveWorkspace(null);
+      }
+      return { success: true };
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase
+          .from('workspace_members')
+          .delete()
+          .eq('workspace_id', workspaceId)
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+
+        if (user.active_workspace_id === workspaceId) {
+          await setActiveWorkspace(null);
+        }
+        return { success: true };
+      } catch (e: any) {
+        return { success: false, error: e.message || 'Bütçeden ayrılırken hata oluştu.' };
+      }
+    }
+    return { success: false, error: 'Sunucu hatası.' };
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -1182,6 +1869,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         recurringTransactions,
         goals,
         loadingData,
+        workspaces,
+        activeWorkspace,
+        workspaceMembers,
+        createWorkspace,
+        joinWorkspace,
+        leaveWorkspace,
+        setActiveWorkspace,
         addTransaction,
         updateTransaction,
         deleteTransaction,
@@ -1190,6 +1884,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteCategory,
         addOrUpdateBudget,
         deleteBudget,
+        copyBudgets,
         addRecurringTransaction,
         updateRecurringTransaction,
         deleteRecurringTransaction,
@@ -1208,6 +1903,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteSubscription,
         toggleSubscriptionActiveStatus,
         renewSubscription,
+        assets,
+        addAsset,
+        updateAsset,
+        deleteAsset,
         resetAllData,
       }}
     >

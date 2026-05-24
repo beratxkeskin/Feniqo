@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { Settings as SettingsIcon, Shield, Trash2, Moon, Sun, Monitor, DollarSign, Brain, RefreshCw } from 'lucide-react';
+import { Settings as SettingsIcon, Shield, Trash2, Moon, Sun, DollarSign, Brain, RefreshCw, Briefcase } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { ConfirmModal } from '../components/common/ConfirmModal';
 import { formatCurrency } from '../utils/formatters';
+import { CustomSelect } from '../components/common/CustomSelect';
 
 const translations = {
   tr: {
@@ -12,6 +13,8 @@ const translations = {
     currencyUpdated: 'Para birimi tercihi başarıyla güncellendi.',
     themeUpdated: 'Tema tercihi başarıyla güncellendi.',
     langUpdated: 'Dil tercihi başarıyla güncellendi.',
+    colorThemeLabel: 'Renk Vurgusu (Tema)',
+    colorThemeUpdated: 'Renk teması tercihi başarıyla güncellendi.',
     resetSuccess: 'Tüm veriler başarıyla sıfırlandı ve demo mod şablonu yüklendi.',
     generalPrefs: 'Görünüm ve Tercihler',
     defaultCurrency: 'Varsayılan Para Birimi',
@@ -61,6 +64,8 @@ const translations = {
     currencyUpdated: 'Currency preference updated successfully.',
     themeUpdated: 'Theme preference updated successfully.',
     langUpdated: 'Language preference updated successfully.',
+    colorThemeLabel: 'Color Accent Theme',
+    colorThemeUpdated: 'Color theme preference updated successfully.',
     resetSuccess: 'All data has been reset successfully and the demo template has been loaded.',
     generalPrefs: 'Appearance & Preferences',
     defaultCurrency: 'Default Currency',
@@ -170,38 +175,65 @@ export const Settings: React.FC = () => {
     setTimeout(() => setSuccessMsg(''), 3000);
   };
 
-  if (!user) return null;
+  const [portfolioCurrency, setPortfolioCurrency] = useState(() => {
+    return localStorage.getItem('moneymate_portfolio_currency') || user?.currency || 'TRY';
+  });
 
-  // Change Currency
-  const handleCurrencyChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    await updateProfile({ currency: e.target.value as any });
-    setSuccessMsg(t.currencyUpdated);
+  const handlePortfolioCurrencyChange = (val: string) => {
+    setPortfolioCurrency(val);
+    localStorage.setItem('moneymate_portfolio_currency', val);
+    setSuccessMsg(lang === 'tr' ? 'Portföy değerleme para birimi güncellendi.' : 'Portfolio valuation currency updated.');
     setTimeout(() => setSuccessMsg(''), 3000);
   };
 
-  // Change Theme
-  const handleThemeChange = async (themeName: 'light' | 'dark' | 'system') => {
-    await updateProfile({ theme: themeName });
+  const [colorTheme, setColorTheme] = useState(() => {
+    return localStorage.getItem('moneymate_color_theme') || 'emerald';
+  });
+
+  const activeThemeId = useMemo(() => {
+    const appliedTheme = localStorage.getItem('moneymate_applied_theme') || 'dark';
+    const colorThemeName = localStorage.getItem('moneymate_color_theme') || 'emerald';
     
-    // Apply class to html element
-    if (themeName === 'dark') {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('moneymate_applied_theme', 'dark');
-    } else if (themeName === 'light') {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('moneymate_applied_theme', 'light');
-    } else {
-      // System
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-      localStorage.removeItem('moneymate_applied_theme');
+    if (colorThemeName === 'emerald') {
+      return appliedTheme === 'light' ? 'light' : 'dark';
     }
+    return colorThemeName; // 'sunset', 'rose', 'ocean'
+  }, [colorTheme, user?.theme]);
+
+  const handleThemeSelect = async (themeId: 'light' | 'dark' | 'sunset' | 'rose' | 'ocean') => {
+    const isDarkMode = themeId !== 'light';
+    const colorThemeName = (themeId === 'light' || themeId === 'dark') ? 'emerald' : themeId;
+
+    // 1. Save to local storage
+    localStorage.setItem('moneymate_applied_theme', isDarkMode ? 'dark' : 'light');
+    localStorage.setItem('moneymate_color_theme', colorThemeName);
+
+    // 2. Save profile theme to DB
+    await updateProfile({ theme: isDarkMode ? 'dark' : 'light' });
+
+    // 3. Update DOM classes instantly
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+
+    document.documentElement.classList.remove('theme-emerald', 'theme-sunset', 'theme-rose', 'theme-ocean');
+    document.documentElement.classList.add(`theme-${colorThemeName}`);
+
+    // 4. Update component state
+    setColorTheme(colorThemeName);
     
-    setSuccessMsg(t.themeUpdated);
+    setSuccessMsg(translations[lang].themeUpdated);
+    setTimeout(() => setSuccessMsg(''), 3000);
+  };
+
+  if (!user) return null;
+
+  // Change Currency
+  const handleCurrencyChange = async (val: string) => {
+    await updateProfile({ currency: val as any });
+    setSuccessMsg(t.currencyUpdated);
     setTimeout(() => setSuccessMsg(''), 3000);
   };
 
@@ -294,6 +326,12 @@ export const Settings: React.FC = () => {
     }, 1200);
   };
 
+  const currencyOptions = [
+    { value: 'TRY', label: lang === 'tr' ? 'Türk Lirası (TRY)' : 'Turkish Lira (TRY)', meta: '₺' },
+    { value: 'USD', label: lang === 'tr' ? 'Amerikan Doları (USD)' : 'US Dollar (USD)', meta: '$' },
+    { value: 'EUR', label: lang === 'tr' ? 'Euro (EUR)' : 'Euro (EUR)', meta: '€' },
+  ];
+
   return (
     <div className="space-y-6">
       
@@ -331,61 +369,129 @@ export const Settings: React.FC = () => {
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
                 {t.defaultCurrency}
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                  <DollarSign size={16} />
-                </div>
-                <select
-                  value={currency}
-                  onChange={handleCurrencyChange}
-                  className="premium-input pl-10 appearance-none bg-no-repeat cursor-pointer text-sm"
-                  style={{ backgroundImage: 'url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3E%3Cpath stroke=\'%236B7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'m6 8 4 4 4-4\'/%3E%3C/svg%3E")', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25rem' }}
-                >
-                  <option value="TRY">Türk Lirası (TRY - ₺)</option>
-                  <option value="USD">Amerikan Doları (USD - $)</option>
-                  <option value="EUR">Euro (EUR - €)</option>
-                </select>
-              </div>
+              <CustomSelect
+                options={currencyOptions}
+                value={currency}
+                onChange={handleCurrencyChange}
+                icon={<DollarSign size={16} />}
+              />
             </div>
 
-            {/* Theme selector buttons */}
+            {/* Portfolio Valuation Currency select */}
             <div className="space-y-2">
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
-                {t.appTheme}
+                {lang === 'tr' ? 'Portföy Değerleme Para Birimi' : 'Portfolio Valuation Currency'}
               </label>
-              <div className="grid grid-cols-3 gap-3">
+              <CustomSelect
+                options={currencyOptions}
+                value={portfolioCurrency}
+                onChange={handlePortfolioCurrencyChange}
+                icon={<Briefcase size={16} />}
+              />
+            </div>
+
+            {/* Unified Immersive Theme Selector */}
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
+                  {t.appTheme}
+                </label>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 pl-1 leading-relaxed mt-0.5">
+                  {lang === 'tr' 
+                    ? 'Uygulamanın genel atmosferini, arka plan auralarını ve kart renklerini bütünsel olarak değiştiren tam sarmalayıcı premium temalar.' 
+                    : 'Fully immersive premium themes that holistically morph backgrounds, atmospheric glows, and card textures.'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                {/* 1. Mistik Zümrüt (Açık) */}
                 <button
-                  onClick={() => handleThemeChange('light')}
-                  className={`py-3 px-4 rounded-xl border font-semibold text-xs flex flex-col items-center justify-center space-y-1.5 transition-all ${
-                    user.theme === 'light'
-                      ? 'border-brand-500 bg-brand-500/10 text-brand-600 dark:text-brand-400'
+                  onClick={() => handleThemeSelect('light')}
+                  className={`py-3 px-2.5 rounded-xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center ${
+                    activeThemeId === 'light'
+                      ? 'border-teal-500 bg-teal-500/10 text-teal-600 dark:text-teal-400 shadow-sm shadow-teal-500/10'
                       : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                   }`}
                 >
-                  <Sun size={18} />
-                  <span>{t.lightTheme}</span>
+                  <div className="flex items-center space-x-1.5">
+                    <Sun size={12} className="text-amber-500 shrink-0" />
+                    <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-[#0d9488] to-[#2dd4bf] shadow-inner shrink-0" />
+                  </div>
+                  <span className="text-[10px] tracking-tight whitespace-nowrap block w-full truncate">
+                    {lang === 'tr' ? 'Klasik Açık' : 'Classic Light'}
+                  </span>
                 </button>
+
+                {/* 2. Mistik Zümrüt (Koyu) */}
                 <button
-                  onClick={() => handleThemeChange('dark')}
-                  className={`py-3 px-4 rounded-xl border font-semibold text-xs flex flex-col items-center justify-center space-y-1.5 transition-all ${
-                    user.theme === 'dark'
-                      ? 'border-brand-500 bg-brand-500/10 text-brand-600 dark:text-brand-400'
+                  onClick={() => handleThemeSelect('dark')}
+                  className={`py-3 px-2.5 rounded-xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center ${
+                    activeThemeId === 'dark'
+                      ? 'border-teal-500 bg-teal-500/10 text-teal-600 dark:text-teal-400 shadow-sm shadow-teal-500/10'
                       : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                   }`}
                 >
-                  <Moon size={18} />
-                  <span>{t.darkTheme}</span>
+                  <div className="flex items-center space-x-1.5">
+                    <Moon size={12} className="text-slate-400 shrink-0" />
+                    <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-[#0d9488] to-[#2dd4bf] shadow-inner shrink-0" />
+                  </div>
+                  <span className="text-[10px] tracking-tight whitespace-nowrap block w-full truncate">
+                    {lang === 'tr' ? 'Klasik Koyu' : 'Classic Dark'}
+                  </span>
                 </button>
+
+                {/* 3. Gün Batımı Altını */}
                 <button
-                  onClick={() => handleThemeChange('system')}
-                  className={`py-3 px-4 rounded-xl border font-semibold text-xs flex flex-col items-center justify-center space-y-1.5 transition-all ${
-                    user.theme === 'system'
-                      ? 'border-brand-500 bg-brand-500/10 text-brand-600 dark:text-brand-400'
+                  onClick={() => handleThemeSelect('sunset')}
+                  className={`py-3 px-2.5 rounded-xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center ${
+                    activeThemeId === 'sunset'
+                      ? 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-sm shadow-amber-500/10'
                       : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                   }`}
                 >
-                  <Monitor size={18} />
-                  <span>{t.systemTheme}</span>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="text-[10px] shrink-0">🌅</span>
+                    <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-[#BA7517] to-[#D4537E] shadow-inner shrink-0" />
+                  </div>
+                  <span className="text-[10px] tracking-tight whitespace-nowrap block w-full truncate">
+                    {lang === 'tr' ? 'Gün Batımı Altını' : 'Sunset Gold'}
+                  </span>
+                </button>
+
+                {/* 4. Cesur Gül */}
+                <button
+                  onClick={() => handleThemeSelect('rose')}
+                  className={`py-3 px-2.5 rounded-xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center ${
+                    activeThemeId === 'rose'
+                      ? 'border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400 shadow-sm shadow-rose-500/10'
+                      : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                  }`}
+                >
+                  <div className="flex items-center space-x-1.5">
+                    <span className="text-[10px] shrink-0">🌹</span>
+                    <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-[#993556] to-[#D56082] shadow-inner shrink-0" />
+                  </div>
+                  <span className="text-[10px] tracking-tight whitespace-nowrap block w-full truncate">
+                    {lang === 'tr' ? 'Cesur Gül' : 'Bold Rose'}
+                  </span>
+                </button>
+
+                {/* 5. Sakin Matcha */}
+                <button
+                  onClick={() => handleThemeSelect('ocean')}
+                  className={`py-3 px-2.5 rounded-xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center ${
+                    activeThemeId === 'ocean'
+                      ? 'border-emerald-600 bg-emerald-600/10 text-emerald-700 dark:text-emerald-400 shadow-sm shadow-emerald-600/10'
+                      : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                  }`}
+                >
+                  <div className="flex items-center space-x-1.5">
+                    <span className="text-[10px] shrink-0">🍵</span>
+                    <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-[#4D775E] to-[#C5A880] shadow-inner shrink-0" />
+                  </div>
+                  <span className="text-[10px] tracking-tight whitespace-nowrap block w-full truncate">
+                    {lang === 'tr' ? 'Sakin Matcha' : 'Calming Matcha'}
+                  </span>
                 </button>
               </div>
             </div>

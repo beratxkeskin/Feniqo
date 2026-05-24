@@ -17,6 +17,7 @@ const INITIAL_FILTERS: FilterState = {
   endDate: '',
   minAmount: '',
   maxAmount: '',
+  selectedTag: '',
 };
 
 export const Transactions: React.FC = () => {
@@ -35,11 +36,21 @@ export const Transactions: React.FC = () => {
   // ---------------------------------------------------------------
   const filteredTransactions = useMemo(() => {
     return transactions.filter((tx) => {
-      // 1. Search in description
+      // 1. Full-Text Search in description, category name, and tags
       if (filters.search.trim()) {
-        const query = filters.search.toLowerCase();
+        const query = filters.search.toLowerCase().replace('#', '').trim();
         const desc = (tx.description || '').toLowerCase();
-        if (!desc.includes(query)) return false;
+        
+        // Match category name
+        const cat = categories.find(c => c.id === tx.category_id);
+        const catName = cat ? cat.name.toLowerCase() : '';
+        
+        // Match tags
+        const hasTagMatch = (tx.tags || []).some(t => t.toLowerCase().includes(query));
+        
+        if (!desc.includes(query) && !catName.includes(query) && !hasTagMatch) {
+          return false;
+        }
       }
 
       // 2. Type Filter (income / expense / all)
@@ -77,9 +88,14 @@ export const Transactions: React.FC = () => {
         if (!isNaN(max) && tx.amount > max) return false;
       }
 
+      // 8. Selected Tag Filter
+      if (filters.selectedTag && !(tx.tags || []).includes(filters.selectedTag)) {
+        return false;
+      }
+
       return true;
     });
-  }, [transactions, filters]);
+  }, [transactions, categories, filters]);
 
   // Reset page when filters change
   useMemo(() => {

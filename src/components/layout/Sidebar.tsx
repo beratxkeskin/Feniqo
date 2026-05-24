@@ -7,14 +7,17 @@ import {
   BarChart3, 
   Settings, 
   LogOut,
-  TrendingUp,
   Repeat,
   Target,
   Coins,
-  CalendarClock
+  CalendarClock,
+  Users,
+  Briefcase
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
 import { ThemeToggle } from '../common/ThemeToggle';
+import { WorkspaceSelector } from './WorkspaceSelector';
 
 interface SidebarProps {
   currentHash: string;
@@ -23,17 +26,20 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentHash, onNavigate }) => {
   const { user, signOut, isDemo } = useAuth();
+  const { workspaces, activeWorkspace, setActiveWorkspace } = useData();
 
   const isEn = user?.lang === 'en';
 
   const menuItems = [
     { name: 'Dashboard', hash: '#/dashboard', icon: LayoutDashboard },
     { name: isEn ? 'Transactions' : 'İşlemler', hash: '#/transactions', icon: ArrowUpDown },
+    { name: isEn ? 'Shared Budget' : 'Ortak Bütçe', hash: '#/workspace', icon: Users },
     { name: isEn ? 'Recurring' : 'Tekrarlayanlar', hash: '#/recurring', icon: Repeat },
     { name: isEn ? 'Subscriptions' : 'Abonelikler', hash: '#/subscriptions', icon: CalendarClock },
     { name: isEn ? 'Budgets' : 'Bütçeler', hash: '#/budgets', icon: PiggyBank },
     { name: isEn ? 'Goals' : 'Hedefler', hash: '#/goals', icon: Target },
     { name: isEn ? 'Debts & Receivables' : 'Borç & Alacak', hash: '#/debts', icon: Coins },
+    { name: isEn ? 'Net Worth' : 'Varlıklarım', hash: '#/networth', icon: Briefcase },
     { name: isEn ? 'Categories' : 'Kategoriler', hash: '#/categories', icon: FolderTree },
     { name: isEn ? 'Reports' : 'Raporlar', hash: '#/reports', icon: BarChart3 },
     { name: isEn ? 'Settings' : 'Ayarlar', hash: '#/settings', icon: Settings },
@@ -56,6 +62,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentHash, onNavigate }) => 
           </span>
         </div>
       </div>
+
+      {/* Workspace Selector */}
+      {workspaces.length > 0 && (
+        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800/60">
+          <WorkspaceSelector
+            workspaces={workspaces}
+            activeWorkspace={activeWorkspace}
+            setActiveWorkspace={setActiveWorkspace}
+            isEn={isEn}
+          />
+        </div>
+      )}
 
       {/* Navigation Links */}
       <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">

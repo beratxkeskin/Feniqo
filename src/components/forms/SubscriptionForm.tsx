@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import { CreditCard, Calendar } from 'lucide-react';
+import * as Icons from 'lucide-react';
+import { CustomSelect } from '../common/CustomSelect';
 
 interface SubscriptionFormProps {
   editingSubscription?: any;
@@ -121,6 +123,16 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({ editingSubsc
     }
   };
 
+  const categoryOptions = expenseCategories.map((cat) => {
+    const IconComponent = (Icons as any)[cat.icon || 'HelpCircle'];
+    return {
+      value: cat.id,
+      label: cat.name,
+      color: cat.color,
+      icon: IconComponent ? <IconComponent className="w-3.5 h-3.5" /> : null,
+    };
+  });
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {errorMsg && (
@@ -172,20 +184,13 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({ editingSubsc
           <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
             {t.categoryLabel}
           </label>
-          <div className="relative">
-            <select
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="premium-input text-sm cursor-pointer"
-              required
-            >
-              {expenseCategories.map(cat => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <CustomSelect
+            options={categoryOptions}
+            value={categoryId}
+            onChange={setCategoryId}
+            placeholder={t.categoryLabel}
+            required
+          />
         </div>
       </div>
 

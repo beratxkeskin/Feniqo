@@ -8,8 +8,21 @@ import {
   PieChart, 
   Sparkles,
   ChevronRight,
-  HelpCircle
+  HelpCircle,
+  ArrowUpDown
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  AreaChart,
+  Area,
+  CartesianGrid
+} from 'recharts';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency, formatMonthName, formatShortDate } from '../utils/formatters';
@@ -23,7 +36,7 @@ export const Reports: React.FC = () => {
   const currency = user?.currency || 'TRY';
   const isEn = user?.lang === 'en';
 
-  const [activeTab, setActiveTab] = useState<'charts' | 'summaries'>('charts');
+  const [activeTab, setActiveTab] = useState<'charts' | 'summaries' | 'compare'>('charts');
   const [period, setPeriod] = useState<PeriodType>('this-month');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -37,6 +50,220 @@ export const Reports: React.FC = () => {
     return stored ? parseInt(stored) : 20;
   }, []);
 
+  // ---------------------------------------------------------------
+  // COMPARISON MOD STATES & HOOKS
+  // ---------------------------------------------------------------
+  const [compareMode, setCompareMode] = useState<'month' | 'year'>('month');
+  const [compareMonthA, setCompareMonthA] = useState('');
+  const [compareMonthB, setCompareMonthB] = useState('');
+  const [compareYearA, setCompareYearA] = useState('');
+  const [compareYearB, setCompareYearB] = useState('');
+
+  // Extract unique months and years dynamically from transactions
+  const uniqueMonths = useMemo(() => {
+    const monthsSet = new Set<string>();
+    transactions.forEach(t => {
+      monthsSet.add(t.transaction_date.substring(0, 7));
+    });
+    return Array.from(monthsSet).sort().reverse();
+  }, [transactions]);
+
+  const uniqueYears = useMemo(() => {
+    const yearsSet = new Set<string>();
+    transactions.forEach(t => {
+      yearsSet.add(t.transaction_date.substring(0, 4));
+    });
+    return Array.from(yearsSet).sort().reverse();
+  }, [transactions]);
+
+  React.useEffect(() => {
+    if (uniqueMonths.length > 0) {
+      if (!compareMonthA) setCompareMonthA(uniqueMonths[0]);
+      if (!compareMonthB) {
+        setCompareMonthB(uniqueMonths[1] || uniqueMonths[0]);
+      }
+    }
+    if (uniqueYears.length > 0) {
+      if (!compareYearA) setCompareYearA(uniqueYears[0]);
+      if (!compareYearB) {
+        setCompareYearB(uniqueYears[1] || uniqueYears[0]);
+      }
+    }
+  }, [uniqueMonths, uniqueYears]);
+
+  const handleSwapPeriods = () => {
+    if (compareMode === 'month') {
+      const temp = compareMonthA;
+      setCompareMonthA(compareMonthB);
+      setCompareMonthB(temp);
+    } else {
+      const temp = compareYearA;
+      setCompareYearA(compareYearB);
+      setCompareYearB(temp);
+    }
+  };
+
+  // Dynamic period filter calculation
+  const comparePeriodTxs = useMemo(() => {
+    let txsA: typeof transactions = [];
+    let txsB: typeof transactions = [];
+    let displayA = '';
+    let displayB = '';
+
+    if (compareMode === 'month') {
+      if (compareMonthA) {
+        txsA = transactions.filter(t => t.transaction_date.startsWith(compareMonthA));
+        displayA = formatMonthName(compareMonthA, isEn);
+      }
+      if (compareMonthB) {
+        txsB = transactions.filter(t => t.transaction_date.startsWith(compareMonthB));
+        displayB = formatMonthName(compareMonthB, isEn);
+      }
+    } else {
+      if (compareYearA) {
+        txsA = transactions.filter(t => t.transaction_date.startsWith(compareYearA));
+        displayA = compareYearA;
+      }
+      if (compareYearB) {
+        txsB = transactions.filter(t => t.transaction_date.startsWith(compareYearB));
+        displayB = compareYearB;
+      }
+    }
+
+    return { txsA, txsB, displayA, displayB };
+  }, [transactions, compareMode, compareMonthA, compareMonthB, compareYearA, compareYearB, isEn]);
+
+  // Calculate metrics A vs B
+  const compareMetrics = useMemo(() => {
+    const { txsA, txsB } = comparePeriodTxs;
+
+    const calculateStats = (txs: typeof transactions) => {
+      const inc = txs.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+      const exp = txs.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+      const net = inc - exp;
+      const rate = inc > 0 ? Math.max(0, Math.round((net / inc) * 100)) : 0;
+      return { income: inc, expense: exp, net, savingsRate: rate };
+    };
+
+    const statsA = calculateStats(txsA);
+    const statsB = calculateStats(txsB);
+
+    const getChangePct = (valA: number, valB: number) => {
+      if (valA === 0) return valB > 0 ? 100 : 0;
+      return Math.round(((valB - valA) / valA) * 100);
+    };
+
+    return {
+      statsA,
+      statsB,
+      incomeDiff: statsB.income - statsA.income,
+      incomeChangePct: getChangePct(statsA.income, statsB.income),
+      expenseDiff: statsB.expense - statsA.expense,
+      expenseChangePct: getChangePct(statsA.expense, statsB.expense),
+      netDiff: statsB.net - statsA.net,
+      netChangePct: getChangePct(statsA.net, statsB.net),
+      rateDiff: statsB.savingsRate - statsA.savingsRate
+    };
+  }, [comparePeriodTxs]);
+
+  // Grouped Category Gider Comparison Data
+  const compareCategoryData = useMemo(() => {
+    const { txsA, txsB } = comparePeriodTxs;
+    
+    const expA: Record<string, number> = {};
+    txsA.filter(t => t.type === 'expense').forEach(t => {
+      expA[t.category_id] = (expA[t.category_id] || 0) + t.amount;
+    });
+
+    const expB: Record<string, number> = {};
+    txsB.filter(t => t.type === 'expense').forEach(t => {
+      expB[t.category_id] = (expB[t.category_id] || 0) + t.amount;
+    });
+
+    const allCatIds = Array.from(new Set([...Object.keys(expA), ...Object.keys(expB)]));
+
+    return allCatIds.map(catId => {
+      const cat = categories.find(c => c.id === catId);
+      const name = cat ? cat.name : (isEn ? 'Other' : 'Diğer');
+      return {
+        name,
+        color: cat ? cat.color : '#6B7280',
+        valA: expA[catId] || 0,
+        valB: expB[catId] || 0,
+        catId
+      };
+    }).sort((a, b) => Math.max(b.valA, b.valB) - Math.max(a.valA, a.valB));
+  }, [comparePeriodTxs, categories, isEn]);
+
+  // Spending Velocity (Cumulative Day 1 to 31 / Month 1 to 12)
+  const compareVelocityData = useMemo(() => {
+    const { txsA, txsB } = comparePeriodTxs;
+
+    const calculateCumulative = (txs: typeof transactions) => {
+      const dailyExpenses = new Array(32).fill(0);
+      txs.filter(t => t.type === 'expense').forEach(t => {
+        const day = parseInt(t.transaction_date.substring(8, 10));
+        if (day >= 1 && day <= 31) {
+          dailyExpenses[day] += t.amount;
+        }
+      });
+
+      const cumulative = [];
+      let total = 0;
+      for (let d = 1; d <= 31; d++) {
+        total += dailyExpenses[d];
+        cumulative[d] = total;
+      }
+      return cumulative;
+    };
+
+    const cumA = calculateCumulative(txsA);
+    const cumB = calculateCumulative(txsB);
+
+    const result = [];
+    
+    if (compareMode === 'month') {
+      for (let d = 1; d <= 31; d++) {
+        result.push({
+          name: isEn ? `Day ${d}` : `${d}. Gün`,
+          valA: cumA[d],
+          valB: cumB[d]
+        });
+      }
+    } else {
+      const getMonthlyTotal = (txs: typeof transactions) => {
+        const monthly = new Array(13).fill(0);
+        txs.filter(t => t.type === 'expense').forEach(t => {
+          const month = parseInt(t.transaction_date.substring(5, 7));
+          monthly[month] += t.amount;
+        });
+        const cumulative = [];
+        let total = 0;
+        for (let m = 1; m <= 12; m++) {
+          total += monthly[m];
+          cumulative[m] = total;
+        }
+        return cumulative;
+      };
+      
+      const yearCumA = getMonthlyTotal(txsA);
+      const yearCumB = getMonthlyTotal(txsB);
+      
+      const monthNamesTR = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+      const monthNamesEN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      
+      for (let m = 1; m <= 12; m++) {
+        result.push({
+          name: isEn ? monthNamesEN[m - 1] : monthNamesTR[m - 1],
+          valA: yearCumA[m],
+          valB: yearCumB[m]
+        });
+      }
+    }
+
+    return result;
+  }, [comparePeriodTxs, compareMode, isEn]);
+
   // Translations dictionary for dual-language support (TR & EN)
   const t = useMemo(() => {
     return {
@@ -44,6 +271,7 @@ export const Reports: React.FC = () => {
       subtitle: isEn ? 'Explore your income, expenses, and savings with rich analytical charts.' : 'Gelir, gider ve birikimlerinizi zengin analitik grafiklerle derinlemesine inceleyin.',
       tabCharts: isEn ? 'Graphical Charts' : 'Grafik Analizleri',
       tabSummaries: isEn ? 'Monthly Summaries' : 'Aylık Finans Özetleri',
+      tabCompare: isEn ? 'Comparative Analytics' : 'Karşılaştırma Analizi',
       
       // Charts tab translations
       thisMonth: isEn ? 'This Month' : 'Bu Ay',
@@ -86,7 +314,7 @@ export const Reports: React.FC = () => {
       noExpenses: isEn ? 'No expenses recorded in this month.' : 'Bu ay herhangi bir harcama yapılmadı.',
       topCategoryText: isEn 
         ? 'Your top spending was in {category} with {amount}, making up {percentage}% of this month\'s total expenses.' 
-        : 'Bu ay en çok harcamayı {category} kategorisinde yaptınız. Bu kategorideki toplam harcamanız {amount} oldu ve tüm aylık harcamalarınızın %{percentage} kadarına denk geliyor.',
+        : 'Bu ay en çok harcemayı {category} kategorisinde yaptınız. Bu kategorideki toplam harcamanız {amount} oldu ve tüm aylık harcamalarınızın %{percentage} kadarına denk geliyor.',
       incomeChangeText: isEn ? 'Income' : 'Geliriniz',
       expenseChangeText: isEn ? 'Expenses' : 'Harcamalarınız',
       netChangeText: isEn ? 'Net Savings' : 'Net Tasarrufunuz',
@@ -109,8 +337,145 @@ export const Reports: React.FC = () => {
       trendNoData: isEn 
         ? 'No significant category trends or budget overruns detected for this month yet. As you record more transactions, you will see deep insights about your spending habits here.' 
         : 'Bu ay için henüz belirgin bir kategori trendi veya bütçe aşımı tespit edilmedi. Daha fazla harcama kaydettikçe burada harcama alışkanlıklarınıza dair derin analizler göreceksiniz.',
+      
+      // Comparison Mode strings
+      compareModeLabel: isEn ? 'Comparison Type' : 'Karşılaştırma Türü',
+      compareMonthMode: isEn ? 'Month vs Month' : 'Ay Bazlı Karşılaştırma',
+      compareYearMode: isEn ? 'Year vs Year' : 'Yıl Bazlı Karşılaştırma',
+      periodALabel: isEn ? 'Period A' : 'Dönem A',
+      periodBLabel: isEn ? 'Period B (Target)' : 'Dönem B (Hedef / Karşılaştırılan)',
+      swapLabel: isEn ? 'Swap Periods' : 'Dönemleri Değiştir',
+      comparisonMetrics: isEn ? 'Comparative Metrics' : 'Karşılaştırmalı Finans Metrikleri',
+      incomeDiff: isEn ? 'Income Shift' : 'Gelir Değişimi',
+      expenseDiff: isEn ? 'Expense Shift' : 'Gider Değişimi',
+      netDiff: isEn ? 'Savings Shift' : 'Birikim Değişimi',
+      savingsRateDiff: isEn ? 'Savings Rate Difference' : 'Tasarruf Oranı Farkı',
+      chartCompareCategoryTitle: isEn ? 'Category-wise Side-by-side Spending' : 'Kategori Bazlı Yan Yana Harcamalar',
+      chartCompareCategorySubtitle: isEn ? 'Category spending in A vs B' : 'Kategorilerde A vs B dönemleri harcama kıyaslaması',
+      chartCompareVelocityTitle: isEn ? 'Cumulative Spending Velocity' : 'Kümülatif Harcama Hızı (İvme Kıyaslama)',
+      chartCompareVelocitySubtitle: isEn ? 'Shows the rate and speed of expense progression' : 'Dönem içi harcama birikim hızını ve ivmesini gösterir',
+      tableCategory: isEn ? 'Category' : 'Kategori',
+      tablePeriodA: isEn ? 'Period A' : 'A Dönemi',
+      tablePeriodB: isEn ? 'Period B' : 'B Dönemi',
+      tableDiff: isEn ? 'Difference' : 'Net Fark',
+      tablePctChange: isEn ? 'Change %' : 'Değişim %',
+      aiReportHeading: isEn ? '🤖 Dynamic Financial Comparison Report' : '🤖 Dinamik Karşılaştırmalı Finans Analizi',
+      noComparisonData: isEn ? 'No transaction data found for the selected comparison periods.' : 'Seçilen karşılaştırma periyotları için işlem verisi bulunamadı.',
+      compareIntro: isEn 
+        ? 'Comparative analysis between {periodA} and {periodB}:' 
+        : '{periodA} ile {periodB} dönemlerinin karşılaştırmalı analizi:',
+      compareIncomeIncrease: isEn 
+        ? 'Your income increased by **{pct}%** (+{diff}) in Period B. Great!' 
+        : 'Geliriniz B döneminde **%{pct}** (+{diff}) oranında artış gösterdi. Harika!',
+      compareIncomeDecrease: isEn 
+        ? 'Your income decreased by **{pct}%** (-{diff}) in Period B. Consider looking for active income streams.' 
+        : 'Geliriniz B döneminde **%{pct}** (-{diff}) düştü. Ek gelir kaynaklarını gözden geçirmelisiniz.',
+      compareExpenseIncrease: isEn 
+        ? '⚠️ Your expenses increased by **{pct}%** (+{diff}) in Period B. Watch your flexible limits.' 
+        : '⚠️ Harcamalarınız B döneminde **%{pct}** (+{diff}) arttı. Keyfi giderlerinize sınır getirmelisiniz.',
+      compareExpenseDecrease: isEn 
+        ? '🎉 Success! Your expenses decreased by **{pct}%** (-{diff}) in Period B. Excellent budgeting!' 
+        : '🎉 Tebrikler! Harcamalarınız B döneminde **%{pct}** (-{diff}) azaldı. Bütçe yönetiminiz takdire şayan!',
+      compareSavingsBetter: isEn 
+        ? 'Your savings rate improved by **{diff}%** (from {rateA}% to {rateB}%).' 
+        : 'Tasarruf oranınız **%{diff}** arttı (%{rateA}\'dan %{rateB}\'ye yükseldi).',
+      compareSavingsWorse: isEn 
+        ? 'Your savings rate dropped by **{diff}%** (from {rateA}% to {rateB}%).' 
+        : 'Tasarruf oranınız **%{diff}** geriledi (%{rateA}\'dan %{rateB}\'ye düştü).',
+      compareTopIncrease: isEn 
+        ? 'The highest increase in expenses was in **{category}** with a surge of **+{diff}**.' 
+        : 'En yüksek gider artışı **{category}** kategorisinde **+{diff}** olarak gerçekleşti.',
+      compareTopDecrease: isEn 
+        ? 'You saved the most in **{category}** with a reduction of **-{diff}**.' 
+        : 'En yüksek harcama tasarrufunu **{category}** kategorisinde **-{diff}** azaltarak yaptınız.'
     };
   }, [isEn]);
+
+  // AI dynamic insight engine calculations
+  const aiCompareInsights = useMemo(() => {
+    const { statsA, statsB, incomeDiff, incomeChangePct, expenseDiff, expenseChangePct, rateDiff } = compareMetrics;
+    
+    if (statsA.income === 0 && statsA.expense === 0 && statsB.income === 0 && statsB.expense === 0) {
+      return [];
+    }
+
+    const insights: string[] = [];
+
+    // Income
+    if (incomeDiff > 0) {
+      insights.push(
+        t.compareIncomeIncrease
+          .replace('{pct}', String(incomeChangePct))
+          .replace('{diff}', formatCurrency(incomeDiff, currency))
+      );
+    } else if (incomeDiff < 0) {
+      insights.push(
+        t.compareIncomeDecrease
+          .replace('{pct}', String(Math.abs(incomeChangePct)))
+          .replace('{diff}', formatCurrency(Math.abs(incomeDiff), currency))
+      );
+    }
+
+    // Expenses
+    if (expenseDiff > 0) {
+      insights.push(
+        t.compareExpenseIncrease
+          .replace('{pct}', String(expenseChangePct))
+          .replace('{diff}', formatCurrency(expenseDiff, currency))
+      );
+    } else if (expenseDiff < 0) {
+      insights.push(
+        t.compareExpenseDecrease
+          .replace('{pct}', String(Math.abs(expenseChangePct)))
+          .replace('{diff}', formatCurrency(Math.abs(expenseDiff), currency))
+      );
+    }
+
+    // Savings Rate
+    if (rateDiff > 0) {
+      insights.push(
+        t.compareSavingsBetter
+          .replace('{diff}', String(rateDiff))
+          .replace('{rateA}', String(statsA.savingsRate))
+          .replace('{rateB}', String(statsB.savingsRate))
+      );
+    } else if (rateDiff < 0) {
+      insights.push(
+        t.compareSavingsWorse
+          .replace('{diff}', String(Math.abs(rateDiff)))
+          .replace('{rateA}', String(statsA.savingsRate))
+          .replace('{rateB}', String(statsB.savingsRate))
+      );
+    }
+
+    // Category Shifts
+    const categoryShifts = compareCategoryData.map(c => ({
+      ...c,
+      diff: c.valB - c.valA
+    })).sort((a, b) => b.diff - a.diff);
+
+    // Max Increase
+    const topIncrease = categoryShifts[0];
+    if (topIncrease && topIncrease.diff > 0) {
+      insights.push(
+        t.compareTopIncrease
+          .replace('{category}', topIncrease.name)
+          .replace('{diff}', formatCurrency(topIncrease.diff, currency))
+      );
+    }
+
+    // Max Decrease
+    const topDecrease = [...categoryShifts].sort((a, b) => a.diff - b.diff)[0];
+    if (topDecrease && topDecrease.diff < 0) {
+      insights.push(
+        t.compareTopDecrease
+          .replace('{category}', topDecrease.name)
+          .replace('{diff}', formatCurrency(Math.abs(topDecrease.diff), currency))
+      );
+    }
+
+    return insights;
+  }, [compareMetrics, compareCategoryData, t, currency]);
 
   // ---------------------------------------------------------------
   // CALCULATE DATE BOUNDARIES FOR FILTERS
@@ -580,6 +945,17 @@ export const Reports: React.FC = () => {
           >
             <Sparkles size={14} />
             <span>{t.tabSummaries}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('compare')}
+            className={`flex items-center space-x-2 py-2 px-4 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'compare' 
+                ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm border border-slate-200/40 dark:border-slate-800/40' 
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
+            }`}
+          >
+            <BarChart3 size={14} />
+            <span>{t.tabCompare}</span>
           </button>
         </div>
       </div>
@@ -1134,6 +1510,394 @@ export const Reports: React.FC = () => {
 
             </div>
           )}
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* TAB 3: COMPARATIVE ANALYTICS VIEW                             */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'compare' && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          
+          {/* Controls Cockpit */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/60 dark:border-slate-800/80 p-5 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+              {/* Mode switch */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider pl-1 whitespace-nowrap">
+                  {t.compareModeLabel}
+                </label>
+                <div className="flex p-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200/50 dark:border-slate-700/40 w-fit">
+                  <button
+                    onClick={() => setCompareMode('month')}
+                    className={`py-1.5 px-3 rounded-lg text-xs font-semibold transition-all ${
+                      compareMode === 'month' 
+                        ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm' 
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                    }`}
+                  >
+                    {t.compareMonthMode}
+                  </button>
+                  <button
+                    onClick={() => setCompareMode('year')}
+                    className={`py-1.5 px-3 rounded-lg text-xs font-semibold transition-all ${
+                      compareMode === 'year' 
+                        ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm' 
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                    }`}
+                  >
+                    {t.compareYearMode}
+                  </button>
+                </div>
+              </div>
+
+              {/* Swap indicator */}
+              <div className="flex-1 flex items-end justify-center sm:justify-start gap-4">
+                {/* Period A Select */}
+                <div className="space-y-1.5 flex-1 max-w-[260px]">
+                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider pl-1 whitespace-nowrap">
+                    {t.periodALabel}
+                  </label>
+                  {compareMode === 'month' ? (
+                    <select
+                      value={compareMonthA}
+                      onChange={(e) => setCompareMonthA(e.target.value)}
+                      className="premium-input text-xs py-2 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 cursor-pointer"
+                    >
+                      {uniqueMonths.map(m => (
+                        <option key={m} value={m}>{formatMonthName(m, isEn)}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <select
+                      value={compareYearA}
+                      onChange={(e) => setCompareYearA(e.target.value)}
+                      className="premium-input text-xs py-2 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 cursor-pointer"
+                    >
+                      {uniqueYears.map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                {/* Swap Button */}
+                <button
+                  onClick={handleSwapPeriods}
+                  title={t.swapLabel}
+                  className="p-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-500 dark:text-slate-400 rounded-xl border border-slate-200 dark:border-slate-700/80 transition-all hover:scale-105 active:scale-95 cursor-pointer shrink-0 h-[34px] w-[34px] flex items-center justify-center"
+                >
+                  <ArrowUpDown size={16} className="transform rotate-90 text-brand-600 dark:text-brand-400" />
+                </button>
+
+                {/* Period B Select */}
+                <div className="space-y-1.5 flex-1 max-w-[260px]">
+                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider pl-1 whitespace-nowrap">
+                    {t.periodBLabel}
+                  </label>
+                  {compareMode === 'month' ? (
+                    <select
+                      value={compareMonthB}
+                      onChange={(e) => setCompareMonthB(e.target.value)}
+                      className="premium-input text-xs py-2 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 cursor-pointer"
+                    >
+                      {uniqueMonths.map(m => (
+                        <option key={m} value={m}>{formatMonthName(m, isEn)}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <select
+                      value={compareYearB}
+                      onChange={(e) => setCompareYearB(e.target.value)}
+                      className="premium-input text-xs py-2 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 cursor-pointer"
+                    >
+                      {uniqueYears.map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* If no data in either period */}
+          {comparePeriodTxs.txsA.length === 0 && comparePeriodTxs.txsB.length === 0 ? (
+            <div className="p-12 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-white dark:bg-slate-900">
+              <HelpCircle size={40} className="mx-auto text-slate-400 dark:text-slate-600 mb-3" />
+              <p className="text-slate-500 dark:text-slate-400 font-semibold text-sm">{t.noComparisonData}</p>
+            </div>
+          ) : (
+            <>
+              {/* Comparison Metrics Grid */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Total Income Comparison */}
+                <div className="p-4 bg-emerald-500/5 border border-emerald-100 dark:border-emerald-950/20 rounded-2xl space-y-1 relative">
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                    {t.incomeDiff}
+                  </span>
+                  <div className="space-y-0.5">
+                    <div className="flex justify-between items-baseline gap-1">
+                      <span className="text-[9px] text-slate-400 font-medium">A: {formatCurrency(compareMetrics.statsA.income, currency)}</span>
+                      <span className="text-[9px] text-slate-900 dark:text-slate-200 font-extrabold">B: {formatCurrency(compareMetrics.statsB.income, currency)}</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-1">
+                      <strong className={`text-sm font-black ${compareMetrics.incomeDiff >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {compareMetrics.incomeDiff >= 0 ? '+' : ''}{formatCurrency(compareMetrics.incomeDiff, currency)}
+                      </strong>
+                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
+                        compareMetrics.incomeDiff >= 0 
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
+                          : 'bg-red-500/10 text-red-600'
+                      }`}>
+                        {compareMetrics.incomeChangePct >= 0 ? '+' : ''}{compareMetrics.incomeChangePct}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Total Expense Comparison */}
+                <div className="p-4 bg-red-500/5 border border-red-100 dark:border-red-950/20 rounded-2xl space-y-1 relative">
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                    {t.expenseDiff}
+                  </span>
+                  <div className="space-y-0.5">
+                    <div className="flex justify-between items-baseline gap-1">
+                      <span className="text-[9px] text-slate-400 font-medium">A: {formatCurrency(compareMetrics.statsA.expense, currency)}</span>
+                      <span className="text-[9px] text-slate-900 dark:text-slate-200 font-extrabold">B: {formatCurrency(compareMetrics.statsB.expense, currency)}</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-1">
+                      <strong className={`text-sm font-black ${compareMetrics.expenseDiff <= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {compareMetrics.expenseDiff >= 0 ? '+' : ''}{formatCurrency(compareMetrics.expenseDiff, currency)}
+                      </strong>
+                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
+                        compareMetrics.expenseDiff <= 0 
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
+                          : 'bg-red-500/10 text-red-600'
+                      }`}>
+                        {compareMetrics.expenseChangePct >= 0 ? '+' : ''}{compareMetrics.expenseChangePct}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Net Savings Comparison */}
+                <div className="p-4 bg-blue-500/5 border border-blue-100 dark:border-blue-950/20 rounded-2xl space-y-1 relative">
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                    {t.netDiff}
+                  </span>
+                  <div className="space-y-0.5">
+                    <div className="flex justify-between items-baseline gap-1">
+                      <span className="text-[9px] text-slate-400 font-medium">A: {formatCurrency(compareMetrics.statsA.net, currency)}</span>
+                      <span className="text-[9px] text-slate-900 dark:text-slate-200 font-extrabold">B: {formatCurrency(compareMetrics.statsB.net, currency)}</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-1">
+                      <strong className={`text-sm font-black ${compareMetrics.netDiff >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {compareMetrics.netDiff >= 0 ? '+' : ''}{formatCurrency(compareMetrics.netDiff, currency)}
+                      </strong>
+                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
+                        compareMetrics.netDiff >= 0 
+                          ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' 
+                          : 'bg-red-500/10 text-red-600'
+                      }`}>
+                        {compareMetrics.netChangePct >= 0 ? '+' : ''}{compareMetrics.netChangePct}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Savings Rate Comparison */}
+                <div className="p-4 bg-purple-500/5 border border-purple-100 dark:border-purple-950/20 rounded-2xl space-y-1 relative">
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                    {t.savingsRateDiff}
+                  </span>
+                  <div className="space-y-0.5">
+                    <div className="flex justify-between items-baseline gap-1">
+                      <span className="text-[9px] text-slate-400 font-medium">A: %{compareMetrics.statsA.savingsRate}</span>
+                      <span className="text-[9px] text-slate-900 dark:text-slate-200 font-extrabold">B: %{compareMetrics.statsB.savingsRate}</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-1">
+                      <strong className={`text-sm font-black ${compareMetrics.rateDiff >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {compareMetrics.rateDiff >= 0 ? '+' : ''}{compareMetrics.rateDiff}%
+                      </strong>
+                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
+                        compareMetrics.rateDiff >= 0 
+                          ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400' 
+                          : 'bg-red-500/10 text-red-600'
+                      }`}>
+                        %{compareMetrics.statsB.savingsRate} vs %{compareMetrics.statsA.savingsRate}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Side-by-Side Charts Container */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* 1. Grouped Category Spending Bar Chart */}
+                <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/60 dark:border-slate-800/80 p-5 shadow-sm space-y-4">
+                  <div>
+                    <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                      {t.chartCompareCategoryTitle}
+                    </h3>
+                    <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 tracking-wider uppercase mt-0.5">
+                      {t.chartCompareCategorySubtitle}
+                    </p>
+                  </div>
+                  
+                  <div className="h-[300px] flex items-center justify-center">
+                    {compareCategoryData.length === 0 ? (
+                      <span className="text-xs font-semibold text-slate-400">{t.noExpenses}</span>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={compareCategoryData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={document.documentElement.classList.contains('dark') ? '#1E293B' : '#E2E8F0'} vertical={false} />
+                          <XAxis dataKey="name" stroke={document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#4B5563'} fontSize={9} tickLine={false} />
+                          <YAxis stroke={document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#4B5563'} fontSize={9} tickLine={false} axisLine={false} />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: document.documentElement.classList.contains('dark') ? '#0F172A' : '#FFFFFF',
+                              borderColor: document.documentElement.classList.contains('dark') ? '#334155' : '#E2E8F0',
+                              borderRadius: '12px',
+                              fontSize: '11px'
+                            }} 
+                            cursor={{ fill: document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.03)' : 'rgba(15, 23, 42, 0.02)' }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: 10, paddingTop: 10 }} />
+                          <Bar name={`${t.tablePeriodA} (${comparePeriodTxs.displayA})`} dataKey="valA" fill="rgb(var(--brand-500))" radius={[4, 4, 0, 0]} maxBarSize={20} />
+                          <Bar name={`${t.tablePeriodB} (${comparePeriodTxs.displayB})`} dataKey="valB" fill="#3B82F6" radius={[4, 4, 0, 0]} maxBarSize={20} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Cumulative Spending Velocity Line Chart */}
+                <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/60 dark:border-slate-800/80 p-5 shadow-sm space-y-4">
+                  <div>
+                    <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                      {t.chartCompareVelocityTitle}
+                    </h3>
+                    <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 tracking-wider uppercase mt-0.5">
+                      {t.chartCompareVelocitySubtitle}
+                    </p>
+                  </div>
+                  
+                  <div className="h-[300px] flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={compareVelocityData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="gradVelA" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="rgb(var(--brand-500))" stopOpacity={0.2}/>
+                            <stop offset="95%" stopColor="rgb(var(--brand-500))" stopOpacity={0.0}/>
+                          </linearGradient>
+                          <linearGradient id="gradVelB" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2}/>
+                            <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke={document.documentElement.classList.contains('dark') ? '#1E293B' : '#E2E8F0'} vertical={false} />
+                        <XAxis dataKey="name" stroke={document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#4B5563'} fontSize={9} tickLine={false} />
+                        <YAxis stroke={document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#4B5563'} fontSize={9} tickLine={false} axisLine={false} />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: document.documentElement.classList.contains('dark') ? '#0F172A' : '#FFFFFF',
+                            borderColor: document.documentElement.classList.contains('dark') ? '#334155' : '#E2E8F0',
+                            borderRadius: '12px',
+                            fontSize: '11px'
+                          }} 
+                          cursor={{ stroke: document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.15)' : 'rgba(15, 23, 42, 0.1)', strokeWidth: 1, strokeDasharray: '4 4' }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 10, paddingTop: 10 }} />
+                        <Area name={`${t.tablePeriodA} (${comparePeriodTxs.displayA})`} type="monotone" dataKey="valA" stroke="rgb(var(--brand-500))" strokeWidth={2.5} fillOpacity={1} fill="url(#gradVelA)" />
+                        <Area name={`${t.tablePeriodB} (${comparePeriodTxs.displayB})`} type="monotone" dataKey="valB" stroke="#3B82F6" strokeWidth={2.5} fillOpacity={1} fill="url(#gradVelB)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Dynamic Analist Coach Insight Banner */}
+              {aiCompareInsights.length > 0 && (
+                <div className="p-5 bg-indigo-500/5 dark:bg-indigo-500/5 rounded-3xl border border-indigo-100 dark:border-indigo-950/30 text-slate-800 dark:text-slate-200 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                  <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400">
+                    <Sparkles size={18} className="animate-pulse" />
+                    <h4 className="text-xs font-black uppercase tracking-wider">{t.aiReportHeading}</h4>
+                  </div>
+                  <div className="space-y-2 text-xs font-semibold leading-relaxed">
+                    <p className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[9px]">
+                      {t.compareIntro.replace('{periodA}', comparePeriodTxs.displayA).replace('{periodB}', comparePeriodTxs.displayB)}
+                    </p>
+                    <ul className="list-disc list-inside space-y-2 text-slate-700 dark:text-slate-300">
+                      {aiCompareInsights.map((insight, idx) => (
+                        <li key={idx} dangerouslySetInnerHTML={{ __html: insight }} />
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+
+              {/* Detailed Category Comparison List/Table */}
+              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/60 dark:border-slate-800/80 p-6 shadow-sm space-y-4">
+                <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider pl-1">
+                  {t.comparisonMetrics}
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-100 dark:border-slate-800/80 text-slate-400 dark:text-slate-500 uppercase tracking-wider text-[9px]">
+                        <th className="text-left py-3 font-extrabold">{t.tableCategory}</th>
+                        <th className="text-right py-3 font-extrabold">{t.tablePeriodA} ({comparePeriodTxs.displayA})</th>
+                        <th className="text-right py-3 font-extrabold">{t.tablePeriodB} ({comparePeriodTxs.displayB})</th>
+                        <th className="text-right py-3 font-extrabold">{t.tableDiff}</th>
+                        <th className="text-right py-3 font-extrabold">{t.tablePctChange}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50 font-medium">
+                      {compareCategoryData.map((cat) => {
+                        const diff = cat.valB - cat.valA;
+                        const pct = cat.valA === 0 ? (cat.valB > 0 ? 100 : 0) : Math.round((diff / cat.valA) * 100);
+                        
+                        return (
+                          <tr key={cat.catId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-all text-slate-700 dark:text-slate-300">
+                            <td className="py-3 flex items-center space-x-2">
+                              <span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ backgroundColor: cat.color }} />
+                              <span className="font-extrabold text-slate-850 dark:text-slate-200">{cat.name}</span>
+                            </td>
+                            <td className="text-right py-3 text-slate-500 dark:text-slate-400">
+                              {formatCurrency(cat.valA, currency)}
+                            </td>
+                            <td className="text-right py-3 font-extrabold text-slate-800 dark:text-slate-100">
+                              {formatCurrency(cat.valB, currency)}
+                            </td>
+                            <td className={`text-right py-3 font-extrabold ${diff > 0 ? 'text-red-500' : diff < 0 ? 'text-emerald-500' : 'text-slate-400'}`}>
+                              {diff > 0 ? '+' : ''}{formatCurrency(diff, currency)}
+                            </td>
+                            <td className="text-right py-3">
+                              <span className={`inline-flex items-center gap-1 font-black px-1.5 py-0.5 rounded ${
+                                diff > 0 
+                                  ? 'bg-red-500/10 text-red-500' 
+                                  : diff < 0 
+                                    ? 'bg-emerald-500/10 text-emerald-500' 
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                              }`}>
+                                {diff > 0 ? <ArrowUpRight size={10} /> : diff < 0 ? <ArrowDownRight size={10} /> : null}
+                                {pct > 0 ? '+' : ''}{pct}%
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </>
+          )}
+
         </div>
       )}
 

@@ -41,6 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               currency: (profileData?.currency as any) || 'TRY',
               theme: (profileData?.theme as any) || 'system',
               lang: savedLang,
+              active_workspace_id: profileData?.active_workspace_id || null,
             });
             setIsDemo(false);
           } else {
@@ -90,6 +91,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             currency: (profileData?.currency as any) || 'TRY',
             theme: (profileData?.theme as any) || 'system',
             lang: savedLang,
+            active_workspace_id: profileData?.active_workspace_id || null,
           });
           setIsDemo(false);
         } else {
@@ -122,6 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currency: 'TRY',
         theme: 'system',
         lang: savedLang,
+        active_workspace_id: null,
       };
       
       localStorage.setItem('moneymate_demo_user', JSON.stringify(mockUser));
@@ -162,6 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currency: 'TRY',
         theme: 'system',
         lang: savedLang,
+        active_workspace_id: null,
       };
       localStorage.setItem('moneymate_demo_user', JSON.stringify(mockUser));
       setUser(mockUser);
@@ -189,15 +193,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Sign Out
   const signOut = async () => {
     setLoading(true);
-    if (isDemo) {
-      localStorage.removeItem('moneymate_demo_user');
+    try {
+      if (isDemo) {
+        localStorage.removeItem('moneymate_demo_user');
+        setUser(null);
+        setIsDemo(false);
+      } else if (isSupabaseConfigured && supabase) {
+        await supabase.auth.signOut();
+        setUser(null);
+      }
+    } catch (e) {
+      console.error("Çıkış yaparken hata oluştu:", e);
+      // Hata olsa bile kullanıcıyı yerel olarak çıkış yapmış sayalım
       setUser(null);
-      setIsDemo(false);
-    } else if (isSupabaseConfigured && supabase) {
-      await supabase.auth.signOut();
-      setUser(null);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   // Update Profile
@@ -218,12 +229,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (isSupabaseConfigured && supabase) {
       try {
+        const updateFields: any = {};
+        if (updates.currency !== undefined) updateFields.currency = updates.currency;
+        if (updates.theme !== undefined) updateFields.theme = updates.theme;
+        if (updates.active_workspace_id !== undefined) updateFields.active_workspace_id = updates.active_workspace_id;
+
         const { error } = await supabase
           .from('profiles')
-          .update({
-            currency: updates.currency,
-            theme: updates.theme,
-          })
+          .update(updateFields)
           .eq('id', user.id);
 
         if (error) throw error;

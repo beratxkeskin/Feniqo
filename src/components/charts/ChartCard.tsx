@@ -95,7 +95,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
               <XAxis dataKey="name" stroke={textFill} fontSize={10} tickLine={false} />
               <YAxis stroke={textFill} fontSize={10} tickLine={false} axisLine={false} />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(15, 23, 42, 0.02)' }} />
               <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
               <Bar name="Gelir" dataKey="gelir" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={30} />
               <Bar name="Gider" dataKey="gider" fill="#EF4444" radius={[4, 4, 0, 0]} maxBarSize={30} />
@@ -148,7 +148,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
               <XAxis dataKey="name" stroke={textFill} fontSize={9} tickLine={false} />
               <YAxis stroke={textFill} fontSize={10} tickLine={false} axisLine={false} />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip />} cursor={{ stroke: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(15, 23, 42, 0.1)', strokeWidth: 1, strokeDasharray: '4 4' }} />
               <Area 
                 name="Gider" 
                 type="monotone" 
@@ -176,7 +176,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
               <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
               <XAxis dataKey="name" stroke={textFill} fontSize={10} tickLine={false} />
               <YAxis stroke={textFill} fontSize={10} tickLine={false} axisLine={false} />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip />} cursor={{ stroke: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(15, 23, 42, 0.1)', strokeWidth: 1, strokeDasharray: '4 4' }} />
               <Area 
                 name="Bakiye" 
                 type="monotone" 

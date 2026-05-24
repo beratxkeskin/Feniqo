@@ -1,6 +1,75 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
+:root {
+  /* Default Theme: Mistik Zümrüt (Teal/Emerald) */
+  --brand-50: 240 253 250;
+  --brand-100: 204 251 241;
+  --brand-200: 153 246 228;
+  --brand-300: 94 234 212;
+  --brand-400: 45 212 191;
+  --brand-500: 20 184 166;
+  --brand-600: 13 148 136;
+  --brand-700: 15 118 110;
+  --brand-800: 17 94 89;
+  --brand-900: 19 78 74;
+}
+
+html.theme-emerald {
+  --brand-50: 240 253 250;
+  --brand-100: 204 251 241;
+  --brand-200: 153 246 228;
+  --brand-300: 94 234 212;
+  --brand-400: 45 212 191;
+  --brand-500: 20 184 166;
+  --brand-600: 13 148 136;
+  --brand-700: 15 118 110;
+  --brand-800: 17 94 89;
+  --brand-900: 19 78 74;
+}
+
+html.theme-sunset {
+  /* 🌅 Gün Batımı Altını (Sunset Gold - custom requested) */
+  --brand-50: 253 248 240;
+  --brand-100: 250 238 218;
+  --brand-200: 245 222 183;
+  --brand-300: 235 196 134;
+  --brand-400: 212 83 126; /* primary-accent (rose transition) */
+  --brand-500: 186 117 23;  /* primary (gold luxury) */
+  --brand-600: 164 99 15;
+  --brand-700: 133 79 11;   /* primary-dark */
+  --brand-800: 100 59 6;
+  --brand-900: 72 42 2;
+}
+
+html.theme-rose {
+  /* 🌹 Cesur Gül (Bold Rose - custom requested) */
+  --brand-50: 253 246 248;
+  --brand-100: 251 234 240;
+  --brand-200: 246 204 215;
+  --brand-300: 233 151 175;
+  --brand-400: 213 96 130;  /* primary-accent */
+  --brand-500: 153 53 86;   /* primary (bold crimson pink) */
+  --brand-600: 135 43 75;
+  --brand-700: 114 36 62;   /* primary-dark */
+  --brand-800: 92 29 50;
+  --brand-900: 65 20 35;
+}
+
+html.theme-ocean {
+  /* ☕ Sakin Matcha (Calming Matcha - Pastel & Relaxing) */
+  --brand-50: 244 247 245;
+  --brand-100: 228 236 231;
+  --brand-200: 199 217 206;
+  --brand-300: 159 189 170;
+  --brand-400: 114 156 129;
+  --brand-500: 77 119 94;   /* primary (organic matcha green) */
+  --brand-600: 61 95 75;
+  --brand-700: 49 76 60;
+  --brand-800: 38 59 47;
+  --brand-900: 26 40 32;
+}
+
 @layer base {
   html, body {
     @apply bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-200;
@@ -122,4 +191,154 @@
   -webkit-user-select: none;
   user-select: none;
 }
+
+/* ==========================================================================
+   FULLY IMMERSIVE THEMES (Aura & Background & Card Integration)
+   ========================================================================== */
+
+/* 1. GÜN BATIMI ALTINI (Sunset Gold) OVERRIDES */
+/* Immersive Page Body Backgrounds */
+html.theme-sunset body,
+html.theme-sunset .min-h-screen {
+  background-color: #faf6ee !important;
+  background-image: radial-gradient(at 0% 0%, rgba(212, 83, 126, 0.05) 0px, transparent 50%),
+                    radial-gradient(at 100% 100%, rgba(186, 117, 23, 0.04) 0px, transparent 50%) !important;
+  background-attachment: fixed;
+}
+html.theme-sunset.dark body,
+html.theme-sunset.dark .bg-slate-950,
+html.theme-sunset.dark .dark\:bg-slate-950,
+html.theme-sunset.dark .min-h-screen {
+  background-color: #0f0904 !important; /* Elegant Warm Luxury Chocolate / Golden Black */
+  background-image: radial-gradient(at 0% 0%, rgba(186, 117, 23, 0.09) 0px, transparent 50%),
+                    radial-gradient(at 100% 100%, rgba(212, 83, 126, 0.09) 0px, transparent 50%) !important;
+  background-attachment: fixed;
+}
+
+/* Light mode panels */
+html.theme-sunset:not(.dark) .bg-white,
+html.theme-sunset:not(.dark) .glass-panel {
+  background-color: #fdfbf7 !important;
+  border-color: rgba(235, 196, 134, 0.35) !important;
+}
+/* Dark mode panels */
+html.theme-sunset.dark .bg-slate-900,
+html.theme-sunset.dark .dark\:bg-slate-900,
+html.theme-sunset.dark .glass-panel,
+html.theme-sunset.dark aside {
+  background-color: #171007 !important; /* Deep Golden Dark Chocolate Card */
+  border-color: rgba(133, 79, 11, 0.25) !important;
+}
+
+/* Light mode borders */
+html.theme-sunset:not(.dark) .border-slate-100,
+html.theme-sunset:not(.dark) .border-slate-200 {
+  border-color: rgba(235, 196, 134, 0.3) !important;
+}
+/* Dark mode borders */
+html.theme-sunset.dark .dark\:border-slate-800,
+html.theme-sunset.dark .border-slate-800,
+html.theme-sunset.dark .border-slate-800\/60,
+html.theme-sunset.dark .dark\:border-slate-800\/60,
+html.theme-sunset.dark .border-r {
+  border-color: rgba(133, 79, 11, 0.2) !important;
+}
+
+/* 2. CESUR GÜL (Bold Rose) OVERRIDES */
+/* Immersive Page Body Backgrounds */
+html.theme-rose body,
+html.theme-rose .min-h-screen {
+  background-color: #fdf8f9 !important;
+  background-image: radial-gradient(at 0% 0%, rgba(213, 96, 130, 0.05) 0px, transparent 50%),
+                    radial-gradient(at 100% 100%, rgba(153, 53, 86, 0.04) 0px, transparent 50%) !important;
+  background-attachment: fixed;
+}
+html.theme-rose.dark body,
+html.theme-rose.dark .bg-slate-950,
+html.theme-rose.dark .dark\:bg-slate-950,
+html.theme-rose.dark .min-h-screen {
+  background-color: #0f0206 !important; /* Deep Crimson Dark Mode Background */
+  background-image: radial-gradient(at 0% 0%, rgba(153, 53, 86, 0.1) 0px, transparent 50%),
+                    radial-gradient(at 100% 100%, rgba(213, 96, 130, 0.08) 0px, transparent 50%) !important;
+  background-attachment: fixed;
+}
+
+/* Light mode panels */
+html.theme-rose:not(.dark) .bg-white,
+html.theme-rose:not(.dark) .glass-panel {
+  background-color: #fefafb !important;
+  border-color: rgba(246, 204, 215, 0.4) !important;
+}
+/* Dark mode panels */
+html.theme-rose.dark .bg-slate-900,
+html.theme-rose.dark .dark\:bg-slate-900,
+html.theme-rose.dark .glass-panel,
+html.theme-rose.dark aside {
+  background-color: #18060c !important; /* Deep Burgundy Dark Card */
+  border-color: rgba(114, 36, 62, 0.25) !important;
+}
+
+/* Light mode borders */
+html.theme-rose:not(.dark) .border-slate-100,
+html.theme-rose:not(.dark) .border-slate-200 {
+  border-color: rgba(246, 204, 215, 0.35) !important;
+}
+/* Dark mode borders */
+html.theme-rose.dark .dark\:border-slate-800,
+html.theme-rose.dark .border-slate-800,
+html.theme-rose.dark .dark\:border-slate-800\/60,
+html.theme-rose.dark .border-r {
+  border-color: rgba(114, 36, 62, 0.2) !important;
+}
+
+/* 3. SAKİN MATCHA (Calming Matcha) OVERRIDES */
+/* Immersive Page Body Backgrounds */
+html.theme-ocean body,
+html.theme-ocean .min-h-screen {
+  background-color: #f3f6f4 !important;
+  background-image: radial-gradient(at 0% 0%, rgba(77, 119, 94, 0.04) 0px, transparent 50%),
+                    radial-gradient(at 100% 100%, rgba(197, 168, 128, 0.03) 0px, transparent 50%) !important;
+  background-attachment: fixed;
+}
+html.theme-ocean.dark body,
+html.theme-ocean.dark .bg-slate-955,
+html.theme-ocean.dark .dark\:bg-slate-955,
+html.theme-ocean.dark .bg-slate-950,
+html.theme-ocean.dark .dark\:bg-slate-950,
+html.theme-ocean.dark .min-h-screen {
+  background-color: #0c1612 !important; /* Deep Moss-Forest Black Background */
+  background-image: radial-gradient(at 0% 0%, rgba(77, 119, 94, 0.08) 0px, transparent 50%),
+                    radial-gradient(at 100% 100%, rgba(197, 168, 128, 0.06) 0px, transparent 50%) !important;
+  background-attachment: fixed;
+}
+
+/* Light mode panels */
+html.theme-ocean:not(.dark) .bg-white,
+html.theme-ocean:not(.dark) .glass-panel {
+  background-color: #ffffff !important;
+  border-color: rgba(199, 217, 206, 0.45) !important;
+}
+/* Dark mode panels */
+html.theme-ocean.dark .bg-slate-900,
+html.theme-ocean.dark .dark\:bg-slate-900,
+html.theme-ocean.dark .glass-panel,
+html.theme-ocean.dark aside {
+  background-color: #14211c !important; /* Calm Sage-Charcoal Card */
+  border-color: rgba(77, 119, 94, 0.25) !important;
+}
+
+/* Light mode borders */
+html.theme-ocean:not(.dark) .border-slate-100,
+html.theme-ocean:not(.dark) .border-slate-200 {
+  border-color: rgba(199, 217, 206, 0.35) !important;
+}
+/* Dark mode borders */
+html.theme-ocean.dark .dark\:border-slate-800,
+html.theme-ocean.dark .border-slate-800,
+html.theme-ocean.dark .border-slate-800\/60,
+html.theme-ocean.dark .dark\:border-slate-800\/60,
+html.theme-ocean.dark .border-r {
+  border-color: rgba(77, 119, 94, 0.2) !important;
+}
+
 

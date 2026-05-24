@@ -21,6 +21,18 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Theme and Color Theme Synchronous Initialization -->
+    <script>
+      (function() {
+        const colorTheme = localStorage.getItem('moneymate_color_theme') || 'emerald';
+        document.documentElement.classList.add('theme-' + colorTheme);
+        const appliedTheme = localStorage.getItem('moneymate_applied_theme');
+        if (appliedTheme === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
   </head>
   <body class="bg-slate-50 text-slate-800 antialiased transition-colors duration-300">
     <div id="root"></div>

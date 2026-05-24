@@ -8,6 +8,7 @@ import { LoadingSpinner } from './components/common/LoadingSpinner';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
+import Workspace from './pages/Workspace';
 import Budgets from './pages/Budgets';
 import Categories from './pages/Categories';
 import Reports from './pages/Reports';
@@ -16,6 +17,7 @@ import Settings from './pages/Settings';
 import Goals from './pages/Goals';
 import Debts from './pages/Debts';
 import Subscriptions from './pages/Subscriptions';
+import NetWorth from './pages/NetWorth';
 
 
 
@@ -33,6 +35,13 @@ const NavigationRouter: React.FC = () => {
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
     };
+  }, []);
+
+  // Color theme application logic on startup
+  useEffect(() => {
+    const colorTheme = localStorage.getItem('moneymate_color_theme') || 'emerald';
+    document.documentElement.classList.remove('theme-emerald', 'theme-sunset', 'theme-indigo', 'theme-ocean', 'theme-rose');
+    document.documentElement.classList.add(`theme-${colorTheme}`);
   }, []);
 
   // Theme application logic on startup and profile settings change
@@ -81,6 +90,8 @@ const NavigationRouter: React.FC = () => {
         return <Dashboard />;
       case '#/transactions':
         return <Transactions />;
+      case '#/workspace':
+        return <Workspace />;
       case '#/budgets':
         return <Budgets />;
       case '#/categories':
@@ -93,6 +104,8 @@ const NavigationRouter: React.FC = () => {
         return <Goals />;
       case '#/debts':
         return <Debts />;
+      case '#/networth':
+        return <NetWorth />;
       case '#/reports':
         return <Reports />;
       case '#/settings':

@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
-import { DollarSign, Calendar, FileText, User } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { Calendar, FileText, User, TrendingUp, TrendingDown, Globe, RefreshCw } from 'lucide-react';
+import { getCurrencySymbol } from '../../utils/formatters';
+import { CustomSelect } from '../common/CustomSelect';
 
 interface DebtFormProps {
   editingDebt?: any;
@@ -10,6 +13,7 @@ interface DebtFormProps {
 
 export const DebtForm: React.FC<DebtFormProps> = ({ editingDebt, onSuccess, onCancel }) => {
   const { addDebt, updateDebt } = useData();
+  const { user } = useAuth();
 
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
@@ -19,6 +23,54 @@ export const DebtForm: React.FC<DebtFormProps> = ({ editingDebt, onSuccess, onCa
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Foreign Currency States
+  const [isForeignCurrency, setIsForeignCurrency] = useState(false);
+  const [foreignAmount, setForeignAmount] = useState('');
+  const [foreignCurrency, setForeignCurrency] = useState('USD');
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [isFetchingRate, setIsFetchingRate] = useState(false);
+  const [rateError, setRateError] = useState('');
+
+  const isEn = user?.lang === 'en';
+
+  // Fetch exchange rate when foreign currency changes
+  useEffect(() => {
+    if (!isForeignCurrency) return;
+    
+    let isMounted = true;
+    const fetchRate = async () => {
+      setIsFetchingRate(true);
+      setRateError('');
+      try {
+        const response = await fetch(`https://api.exchangerate-api.com/v4/latest/${foreignCurrency}`);
+        if (!response.ok) throw new Error('API Error');
+        const data = await response.json();
+        const rate = data.rates[user?.currency || 'TRY'];
+        if (isMounted) {
+          setExchangeRate(rate);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setRateError(isEn ? 'Could not fetch rate' : 'Kur alınamadı');
+        }
+      } finally {
+        if (isMounted) {
+          setIsFetchingRate(false);
+        }
+      }
+    };
+    fetchRate();
+    return () => { isMounted = false; };
+  }, [foreignCurrency, isForeignCurrency]);
+
+  // Auto-calculate base amount
+  useEffect(() => {
+    if (isForeignCurrency && foreignAmount && exchangeRate) {
+      const calcAmount = (parseFloat(foreignAmount) * exchangeRate).toFixed(2);
+      setAmount(calcAmount);
+    }
+  }, [foreignAmount, exchangeRate, isForeignCurrency]);
 
   // Hydrate fields if editing
   useEffect(() => {
@@ -53,13 +105,19 @@ export const DebtForm: React.FC<DebtFormProps> = ({ editingDebt, onSuccess, onCa
     }
 
     setLoading(true);
+    let finalDescription = description.trim();
+    if (isForeignCurrency && foreignAmount && exchangeRate) {
+      const originalText = `[Orijinal: ${foreignAmount} ${foreignCurrency} (Kur: ${exchangeRate.toFixed(2)})]`;
+      finalDescription = finalDescription ? `${finalDescription} ${originalText}` : originalText;
+    }
+
     const payload = {
       title: title.trim(),
       amount: parsedAmount,
       type,
       due_date: dueDate,
       is_paid: isPaid,
-      description: description.trim(),
+      description: finalDescription,
     };
 
     let result;
@@ -76,6 +134,17 @@ export const DebtForm: React.FC<DebtFormProps> = ({ editingDebt, onSuccess, onCa
       setErrorMsg(result.error || 'İşlem gerçekleştirilemedi.');
     }
   };
+
+  const typeOptions = [
+    { value: 'debt', label: 'Borç (Ödeyeceğim)', icon: <TrendingDown className="w-3.5 h-3.5 text-red-500" /> },
+    { value: 'receivable', label: 'Alacak (Alacağım)', icon: <TrendingUp className="w-3.5 h-3.5 text-emerald-500" /> },
+  ];
+
+  const currencyOptions = [
+    { value: 'USD', label: 'Amerikan Doları (USD)', meta: 'USD' },
+    { value: 'EUR', label: 'Euro (EUR)', meta: 'EUR' },
+    { value: 'GBP', label: 'İngiliz Sterlini (GBP)', meta: 'GBP' },
+  ];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -109,20 +178,51 @@ export const DebtForm: React.FC<DebtFormProps> = ({ editingDebt, onSuccess, onCa
       <div className="grid grid-cols-2 gap-4">
         {/* Amount */}
         <div className="space-y-1.5">
-          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
-            Tutar
-          </label>
+          <div className="flex items-center justify-between pl-1">
+            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Tutar
+            </label>
+            {!editingDebt && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsForeignCurrency(!isForeignCurrency);
+                  if (!isForeignCurrency) {
+                    setForeignAmount('');
+                    setExchangeRate(null);
+                  } else {
+                    setAmount('');
+                  }
+                }}
+                className={`text-[10px] font-bold flex items-center space-x-1 transition-colors ${
+                  isForeignCurrency 
+                    ? 'text-brand-500 hover:text-brand-600' 
+                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                }`}
+              >
+                <Globe size={12} />
+                <span>Dövizli</span>
+              </button>
+            )}
+          </div>
           <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
-              <DollarSign size={16} />
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500 font-bold text-sm">
+              {getCurrencySymbol(user?.currency || 'TRY')}
             </div>
             <input
               type="number"
               step="any"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => {
+                setAmount(e.target.value);
+                setIsForeignCurrency(false); // disable dynamic foreign rate if manual override happens
+              }}
               placeholder="0.00"
-              className="premium-input pl-10 text-sm"
+              className={`premium-input pl-10 text-sm ${
+                isForeignCurrency && foreignAmount && exchangeRate
+                  ? 'bg-brand-50/50 dark:bg-brand-900/10 border-brand-200 dark:border-brand-800'
+                  : ''
+              }`}
               required
             />
           </div>
@@ -133,16 +233,58 @@ export const DebtForm: React.FC<DebtFormProps> = ({ editingDebt, onSuccess, onCa
           <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
             İşlem Tipi
           </label>
-          <select
+          <CustomSelect
+            options={typeOptions}
             value={type}
-            onChange={(e) => setType(e.target.value as 'debt' | 'receivable')}
-            className="premium-input text-sm cursor-pointer"
-          >
-            <option value="debt">Borç (Ödeyeceğim)</option>
-            <option value="receivable">Alacak (Alacağım)</option>
-          </select>
+            onChange={(val) => setType(val as 'debt' | 'receivable')}
+          />
         </div>
       </div>
+
+      {/* Foreign currency box (conditional) */}
+      {isForeignCurrency && !editingDebt && (
+        <div className="p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200 shadow-inner">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">Döviz Türü</label>
+              <CustomSelect
+                options={currencyOptions}
+                value={foreignCurrency}
+                onChange={setForeignCurrency}
+                className="text-xs shadow-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">Döviz Tutarı</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={foreignAmount}
+                onChange={(e) => setForeignAmount(e.target.value)}
+                placeholder="0.00"
+                className="premium-input text-xs py-2 px-3 shadow-sm font-semibold"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between text-[10px] px-1">
+            <div className="text-slate-500 dark:text-slate-400 flex items-center space-x-1.5 font-medium">
+              <RefreshCw size={10} className={isFetchingRate ? "animate-spin text-brand-500" : ""} />
+              <span>Güncel Kur:</span>
+              {isFetchingRate ? (
+                <span className="text-brand-500 font-semibold animate-pulse">Hesaplanıyor...</span>
+              ) : rateError ? (
+                <span className="text-red-500 font-semibold">{rateError}</span>
+              ) : exchangeRate ? (
+                <strong className="text-slate-700 dark:text-slate-200">
+                  1 {foreignCurrency} = {exchangeRate.toFixed(4)} {user?.currency || 'TRY'}
+                </strong>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Due date input */}
       <div className="space-y-1.5">

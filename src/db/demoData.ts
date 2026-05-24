@@ -1,4 +1,4 @@
-import type { Category, Transaction, Budget, RecurringTransaction, Goal, Debt, Subscription } from './types';
+import type { Category, Transaction, Budget, RecurringTransaction, Goal, Debt, Subscription, Asset } from './types';
 
 
 // System Default Categories (Matches SQL exactly)
@@ -45,7 +45,7 @@ export const generateDemoTransactions = (userId: string): Transaction[] => [
     amount: 32000,
     type: 'income',
     category_id: 'cat-income-maas',
-    description: 'Şirket Aylık Maaş Ödemesi',
+    description: 'Şirket Aylık Maaş Ödemesi #maaş #şirket',
     payment_method: 'Havale/EFT',
     transaction_date: getRelativeDateStr(21)
   },
@@ -55,7 +55,7 @@ export const generateDemoTransactions = (userId: string): Transaction[] => [
     amount: 6500,
     type: 'income',
     category_id: 'cat-income-freelance',
-    description: 'E-ticaret Tasarım Arayüz İşi',
+    description: 'E-ticaret Tasarım Arayüz İşi #iş #freelance',
     payment_method: 'Havale/EFT',
     transaction_date: getRelativeDateStr(5)
   },
@@ -65,7 +65,7 @@ export const generateDemoTransactions = (userId: string): Transaction[] => [
     amount: 8500,
     type: 'expense',
     category_id: 'cat-expense-kira',
-    description: 'Ev Kirası',
+    description: 'Ev Kirası #kira #yaşam',
     payment_method: 'Havale/EFT',
     transaction_date: getRelativeDateStr(21)
   },
@@ -75,7 +75,7 @@ export const generateDemoTransactions = (userId: string): Transaction[] => [
     amount: 1450.50,
     type: 'expense',
     category_id: 'cat-expense-market',
-    description: 'Haftalık Süpermarket Alışverişi',
+    description: 'Haftalık Süpermarket Alışverişi #market #kişisel',
     payment_method: 'Kredi Kartı',
     transaction_date: getRelativeDateStr(2)
   },
@@ -85,7 +85,7 @@ export const generateDemoTransactions = (userId: string): Transaction[] => [
     amount: 1250.75,
     type: 'expense',
     category_id: 'cat-expense-market',
-    description: 'Genel Gıda ve Hijyen Alışverişi',
+    description: 'Genel Gıda ve Hijyen Alışverişi #market #hijyen',
     payment_method: 'Banka Kartı',
     transaction_date: getRelativeDateStr(14)
   },
@@ -95,7 +95,7 @@ export const generateDemoTransactions = (userId: string): Transaction[] => [
     amount: 450,
     type: 'expense',
     category_id: 'cat-expense-ulasim',
-    description: 'İstanbulkart Aylık Yükleme',
+    description: 'İstanbulkart Aylık Yükleme #ulaşım',
     payment_method: 'Nakit',
     transaction_date: getRelativeDateStr(20)
   },
@@ -105,7 +105,7 @@ export const generateDemoTransactions = (userId: string): Transaction[] => [
     amount: 1200,
     type: 'expense',
     category_id: 'cat-expense-fatura',
-    description: 'Elektrik & Su Faturası',
+    description: 'Elektrik & Su Faturası #fatura #ev',
     payment_method: 'Havale/EFT',
     transaction_date: getRelativeDateStr(12)
   },
@@ -115,7 +115,7 @@ export const generateDemoTransactions = (userId: string): Transaction[] => [
     amount: 650,
     type: 'expense',
     category_id: 'cat-expense-fatura',
-    description: 'Fiber İnternet Faturası',
+    description: 'Fiber İnternet Faturası #fatura #internet',
     payment_method: 'Kredi Kartı',
     transaction_date: getRelativeDateStr(15)
   },
@@ -475,6 +475,59 @@ export const generateDemoSubscriptions = (userId: string): Subscription[] => [
     renewal_date: getRelativeDateStr(-15), // 15 gün sonra yenilenecek
     category_id: 'cat-expense-abonelik',
     is_active: false // Pasif
+  }
+];
+
+export const generateDemoAssets = (userId: string): Asset[] => [
+  {
+    id: 'ast-1',
+    user_id: userId,
+    name: 'Garanti BBVA Mevduat Hesabı',
+    type: 'cash',
+    value: 68000,
+    quantity: 1,
+    purchase_price: 68000,
+    created_at: getRelativeDateStr(120)
+  },
+  {
+    id: 'ast-2',
+    user_id: userId,
+    name: 'Bitcoin (BTC)',
+    type: 'crypto',
+    value: 165000,
+    quantity: 0.05,
+    purchase_price: 135000,
+    created_at: getRelativeDateStr(90)
+  },
+  {
+    id: 'ast-3',
+    user_id: userId,
+    name: 'Apple Inc. (AAPL) Hissesi',
+    type: 'stocks',
+    value: 48500,
+    quantity: 10,
+    purchase_price: 4200,
+    created_at: getRelativeDateStr(60)
+  },
+  {
+    id: 'ast-4',
+    user_id: userId,
+    name: 'Bodrum Yazlık Daire',
+    type: 'real_estate',
+    value: 3500000,
+    quantity: 1,
+    purchase_price: 2800000,
+    created_at: getRelativeDateStr(180)
+  },
+  {
+    id: 'ast-5',
+    user_id: userId,
+    name: 'Fiziki Çeyrek Altın Portföyü',
+    type: 'precious_metals',
+    value: 75000,
+    quantity: 15,
+    purchase_price: 4300,
+    created_at: getRelativeDateStr(45)
   }
 ];
 

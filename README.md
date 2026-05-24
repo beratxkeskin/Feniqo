@@ -153,6 +153,18 @@ VITE_SUPABASE_ANON_KEY=your-anon-public-key
 npm run dev
 ```
 
+### 🧪 Testing
+The project includes a robust testing infrastructure using **Vitest** and **React Testing Library**. Unit tests are written for critical calculation logic and data formatters to ensure financial accuracy.
+
+To run the tests:
+```bash
+# Run all tests in the terminal
+npm run test
+
+# Run tests with the Vitest UI dashboard
+npm run test:ui
+```
+
 ### 🔮 Future Improvements
 *   [ ] **Recurring Transactions:** Automatic addition of monthly recurring payments like rent, salary, and subscriptions.
 *   [ ] **Spending Goals:** Setting savings goals (e.g., Vacation, Car) and tracking savings progress.
@@ -307,6 +319,18 @@ VITE_SUPABASE_ANON_KEY=your-anon-public-key
 **4. Geliştirme Sunucusunu Başlatın**
 ```bash
 npm run dev
+```
+
+### 🧪 Testler (Unit Testing)
+Proje, finansal hesaplamaların ve veri formatlarının doğruluğunu garanti altına almak için **Vitest** ve **React Testing Library** kullanılarak yazılmış kapsamlı birim (unit) test altyapısına sahiptir. İşe alım süreçlerindeki kalite standartlarına uygun olarak tasarlanmıştır.
+
+Testleri çalıştırmak için:
+```bash
+# Tüm testleri terminalde çalıştırır
+npm run test
+
+# Testleri görsel bir arayüz (UI dashboard) üzerinden yönetmek için
+npm run test:ui
 ```
 
 ### 🔮 Gelecek Geliştirmeler

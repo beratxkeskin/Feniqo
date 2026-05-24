@@ -104,10 +104,12 @@ export const calculateBudgetProgress = (spent: number, limit: number): number =>
  * Örn: "2026-05" -> "Mayıs 2026" veya "May 2026"
  */
 export const formatMonthName = (monthStr: string, isEn: boolean = false): string => {
-  if (!monthStr || monthStr.length < 7) return monthStr;
+  if (!monthStr || monthStr.length < 7 || !monthStr.includes('-')) return monthStr;
   try {
     const [year, month] = monthStr.split('-');
+    if (!year || !month || isNaN(parseInt(year)) || isNaN(parseInt(month))) return monthStr;
     const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+    if (isNaN(date.getTime())) return monthStr;
     return date.toLocaleDateString(isEn ? 'en-US' : 'tr-TR', { month: 'long', year: 'numeric' });
   } catch (e) {
     return monthStr;

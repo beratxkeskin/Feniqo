@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { 
   Menu, 
   X, 
-  TrendingUp, 
   LayoutDashboard, 
   ArrowUpDown, 
   PiggyBank, 
@@ -13,10 +12,14 @@ import {
   Repeat,
   Target,
   Coins,
-  CalendarClock
+  CalendarClock,
+  Users,
+  Briefcase
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
 import { ThemeToggle } from '../common/ThemeToggle';
+import { WorkspaceSelector } from './WorkspaceSelector';
 
 interface NavbarProps {
   currentHash: string;
@@ -25,6 +28,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ currentHash, onNavigate }) => {
   const { user, signOut, isDemo } = useAuth();
+  const { workspaces, activeWorkspace, setActiveWorkspace } = useData();
   const [isOpen, setIsOpen] = useState(false);
 
   const isEn = user?.lang === 'en';
@@ -32,11 +36,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentHash, onNavigate }) => {
   const menuItems = [
     { name: 'Dashboard', hash: '#/dashboard', icon: LayoutDashboard },
     { name: isEn ? 'Transactions' : 'İşlemler', hash: '#/transactions', icon: ArrowUpDown },
+    { name: isEn ? 'Shared Budget' : 'Ortak Bütçe', hash: '#/workspace', icon: Users },
     { name: isEn ? 'Recurring' : 'Tekrarlayanlar', hash: '#/recurring', icon: Repeat },
     { name: isEn ? 'Subscriptions' : 'Abonelikler', hash: '#/subscriptions', icon: CalendarClock },
     { name: isEn ? 'Budgets' : 'Bütçeler', hash: '#/budgets', icon: PiggyBank },
     { name: isEn ? 'Goals' : 'Hedefler', hash: '#/goals', icon: Target },
     { name: isEn ? 'Debts & Receivables' : 'Borç & Alacak', hash: '#/debts', icon: Coins },
+    { name: isEn ? 'Net Worth' : 'Varlıklarım', hash: '#/networth', icon: Briefcase },
     { name: isEn ? 'Categories' : 'Kategoriler', hash: '#/categories', icon: FolderTree },
     { name: isEn ? 'Reports' : 'Raporlar', hash: '#/reports', icon: BarChart3 },
     { name: isEn ? 'Settings' : 'Ayarlar', hash: '#/settings', icon: Settings },
@@ -99,6 +105,18 @@ export const Navbar: React.FC<NavbarProps> = ({ currentHash, onNavigate }) => {
                 <X size={20} />
               </button>
             </div>
+
+            {/* Workspace Selector */}
+            {workspaces.length > 0 && (
+              <div className="py-3 border-b border-slate-100 dark:border-slate-800/60">
+                <WorkspaceSelector
+                  workspaces={workspaces}
+                  activeWorkspace={activeWorkspace}
+                  setActiveWorkspace={setActiveWorkspace}
+                  isEn={isEn}
+                />
+              </div>
+            )}
 
             {/* Navigation links */}
             <nav className="flex-1 py-6 space-y-1.5 overflow-y-auto">

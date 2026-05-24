@@ -12,7 +12,7 @@ interface TransactionListProps {
 }
 
 export const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit }) => {
-  const { categories, deleteTransaction } = useData();
+  const { categories, deleteTransaction, activeWorkspace, workspaceMembers } = useData();
   const { user } = useAuth();
   const currency = user?.currency || 'TRY';
 
@@ -49,6 +49,11 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
                 const categoryIconName = (category?.icon || 'HelpCircle') as keyof typeof Icons;
                 const IconComponent = Icons[categoryIconName] as React.ComponentType<any>;
 
+                const spender = workspaceMembers.find(m => m.id === tx.user_id);
+                const spenderName = spender 
+                  ? (spender.email === user?.email ? (user?.lang === 'en' ? 'You' : 'Siz') : spender.email.split('@')[0])
+                  : (tx.user_id === 'demo-partner-456' ? 'Buse' : (user?.lang === 'en' ? 'You' : 'Siz'));
+
                 return (
                   <tr 
                     key={tx.id} 
@@ -63,17 +68,45 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
                         >
                           {IconComponent ? <IconComponent size={16} /> : <Icons.HelpCircle size={16} />}
                         </div>
-                        <span className="font-semibold text-slate-900 dark:text-slate-100">
-                          {category ? category.name : 'Bilinmeyen Kategori'}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-slate-900 dark:text-slate-100">
+                            {category ? category.name : 'Bilinmeyen Kategori'}
+                          </span>
+                          {activeWorkspace && (
+                            <span className="text-[10px] text-slate-400 font-medium mt-0.5">
+                              👤 {spenderName}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
 
                     {/* Description Column */}
-                    <td className="px-6 py-4.5 max-w-[200px] truncate">
-                      <span className="font-medium text-slate-800 dark:text-slate-200">
-                        {tx.description || <span className="text-slate-400 dark:text-slate-500 italic">Detay yok</span>}
-                      </span>
+                    <td className="px-6 py-4.5 max-w-[200px]">
+                      <div className="flex flex-col space-y-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                            {tx.description || <span className="text-slate-400 dark:text-slate-500 italic">Detay yok</span>}
+                          </span>
+                          {tx.receipt_url && (
+                            <a href={tx.receipt_url} target="_blank" rel="noopener noreferrer" className="text-brand-500 hover:text-brand-600 dark:hover:text-brand-400 shrink-0 p-1 bg-brand-50 dark:bg-brand-900/20 rounded-md" title="Makbuzu Görüntüle">
+                              <Icons.Paperclip size={14} />
+                            </a>
+                          )}
+                        </div>
+                        {tx.tags && tx.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {tx.tags.map(tag => (
+                              <span 
+                                key={tag} 
+                                className="px-1.5 py-0.5 rounded-md text-[9px] font-extrabold bg-slate-100/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border border-slate-200/25 dark:border-slate-800/50"
+                              >
+                                #{tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </td>
 
                     {/* Date Column */}
@@ -130,6 +163,11 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
             const categoryIconName = (category?.icon || 'HelpCircle') as keyof typeof Icons;
             const IconComponent = Icons[categoryIconName] as React.ComponentType<any>;
 
+            const spender = workspaceMembers.find(m => m.id === tx.user_id);
+            const spenderName = spender 
+              ? (spender.email === user?.email ? (user?.lang === 'en' ? 'You' : 'Siz') : spender.email.split('@')[0])
+              : (tx.user_id === 'demo-partner-456' ? 'Buse' : (user?.lang === 'en' ? 'You' : 'Siz'));
+
             return (
               <div 
                 key={tx.id} 
@@ -145,8 +183,13 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
                       {IconComponent ? <IconComponent size={15} /> : <Icons.HelpCircle size={15} />}
                     </div>
                     <div>
-                      <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+                      <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                         {category ? category.name : 'Bilinmeyen Kategori'}
+                        {activeWorkspace && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-md">
+                            {spenderName}
+                          </span>
+                        )}
                       </h4>
                       <span className="text-[10px] text-slate-400 dark:text-slate-500">
                         {formatDate(tx.transaction_date)}
@@ -173,10 +216,29 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
 
                 {/* Body: Description, Payment Method, Amount */}
                 <div className="flex items-end justify-between pl-11">
-                  <div className="space-y-1">
-                    <p className="text-xs text-slate-700 dark:text-slate-300 font-medium line-clamp-1">
-                      {tx.description || <span className="text-slate-400 dark:text-slate-500 italic">Açıklama yok</span>}
-                    </p>
+                  <div className="space-y-1.5 flex-1 pr-4">
+                    <div className="flex items-center space-x-2">
+                      <p className="text-xs text-slate-700 dark:text-slate-300 font-semibold line-clamp-1">
+                        {tx.description || <span className="text-slate-400 dark:text-slate-500 italic">Açıklama yok</span>}
+                      </p>
+                      {tx.receipt_url && (
+                        <a href={tx.receipt_url} target="_blank" rel="noopener noreferrer" className="text-brand-500 bg-brand-50 dark:bg-brand-900/20 p-1 rounded-md shrink-0">
+                          <Icons.Paperclip size={12} />
+                        </a>
+                      )}
+                    </div>
+                    {tx.tags && tx.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {tx.tags.map(tag => (
+                          <span 
+                            key={tag} 
+                            className="px-1.5 py-0.5 rounded-md text-[8px] font-extrabold bg-slate-100/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border border-slate-200/25 dark:border-slate-800/50"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                       {tx.payment_method}
                     </span>

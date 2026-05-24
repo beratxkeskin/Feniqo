@@ -92,7 +92,7 @@ const getIcon = (name: string | null | undefined) => {
   }
 };
 
-const calculateDaysLeft = (targetDateStr: string): number => {
+export const calculateDaysLeft = (targetDateStr: string): number => {
   const targetDate = new Date(targetDateStr);
   const today = new Date();
   targetDate.setHours(0, 0, 0, 0);
@@ -102,8 +102,35 @@ const calculateDaysLeft = (targetDateStr: string): number => {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
 
+export const calculateEstimatedArrivalDate = (goal: Goal): string => {
+  const current = Number(goal.current_amount);
+  const target = Number(goal.target_amount);
+  if (current >= target) return 'completed';
+  if (current <= 0) return 'no_savings';
+
+  const createdDate = new Date(goal.created_at || Date.now());
+  const today = new Date();
+  createdDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+  
+  const diffTime = today.getTime() - createdDate.getTime();
+  // Weekly-moving-average smoothing (min 7 days) to prevent extreme spikes on initial deposits
+  const daysSinceCreation = Math.max(7, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+  
+  const avgSavedPerDay = current / daysSinceCreation;
+  if (avgSavedPerDay <= 0) return 'no_rate';
+
+  const remaining = target - current;
+  const daysNeeded = Math.ceil(remaining / avgSavedPerDay);
+  
+  const estimatedDate = new Date();
+  estimatedDate.setDate(today.getDate() + daysNeeded);
+  return estimatedDate.toISOString().split('T')[0];
+};
+
 export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit, onDelete, onAddFunds }) => {
   const { user } = useAuth();
+  const isEn = user?.lang === 'en';
   const [showQuickAction, setShowQuickAction] = useState<'add' | 'remove' | null>(null);
   const [amountInput, setAmountInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -115,6 +142,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit, onDelete, onAd
   const progressPercent = Math.min(100, Math.max(0, Math.round((goal.current_amount / goal.target_amount) * 100)));
   const isCompleted = goal.current_amount >= goal.target_amount;
   const daysLeft = calculateDaysLeft(goal.target_date);
+  const estDate = calculateEstimatedArrivalDate(goal);
   
   const handleAmountSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,7 +150,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit, onDelete, onAd
     const amt = parseFloat(amountInput);
     
     if (isNaN(amt) || amt <= 0) {
-      setErrorMsg('Lütfen geçerli pozitif bir miktar girin.');
+      setErrorMsg(isEn ? 'Please enter a valid positive amount.' : 'Lütfen geçerli pozitif bir miktar girin.');
       return;
     }
     
@@ -130,7 +158,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit, onDelete, onAd
     const finalAmount = showQuickAction === 'add' ? amt : -amt;
     
     if (showQuickAction === 'remove' && goal.current_amount < amt) {
-      setErrorMsg('Mevcut birikiminizden daha fazla para çıkaramazsınız.');
+      setErrorMsg(isEn ? 'You cannot withdraw more than your current savings.' : 'Mevcut birikiminizden daha fazla para çıkaramazsınız.');
       setIsSubmitting(false);
       return;
     }
@@ -141,17 +169,17 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit, onDelete, onAd
         setAmountInput('');
         setShowQuickAction(null);
       } else {
-        setErrorMsg(res.error || 'İşlem sırasında hata oluştu.');
+        setErrorMsg(res.error || (isEn ? 'An error occurred during the transaction.' : 'İşlem sırasında hata oluştu.'));
       }
     } catch (err) {
-      setErrorMsg('Beklenmeyen bir hata oluştu.');
+      setErrorMsg(isEn ? 'An unexpected error occurred.' : 'Beklenmeyen bir hata oluştu.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className={`relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all duration-300 ${isCompleted ? 'ring-2 ring-emerald-500/20 dark:ring-emerald-400/20' : ''}`}>
+    <div className={`relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col h-full ${isCompleted ? 'ring-2 ring-emerald-500/20 dark:ring-emerald-400/20' : ''}`}>
       
       {/* Dynamic Colored Top Decorative Bar */}
       <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${preset.gradient}`} />
@@ -183,14 +211,14 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit, onDelete, onAd
           <button 
             onClick={() => onEdit(goal)}
             className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all"
-            title="Düzenle"
+            title={isEn ? 'Edit' : 'Düzenle'}
           >
             <Edit2 className="w-4 h-4" />
           </button>
           <button 
             onClick={() => onDelete(goal.id)}
             className="p-2 text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all"
-            title="Sil"
+            title={isEn ? 'Delete' : 'Sil'}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -201,13 +229,17 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit, onDelete, onAd
       <div className="space-y-4 mb-5">
         <div className="flex items-baseline justify-between">
           <div className="flex flex-col">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">Mevcut Birikim</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">
+              {isEn ? 'Current Savings' : 'Mevcut Birikim'}
+            </span>
             <span className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
               {formatCurrency(goal.current_amount, currency)}
             </span>
           </div>
           <div className="flex flex-col text-right">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">Hedef Tutar</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">
+              {isEn ? 'Target Amount' : 'Hedef Tutar'}
+            </span>
             <span className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-1.5">
               {formatCurrency(goal.target_amount, currency)}
             </span>
@@ -218,15 +250,15 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit, onDelete, onAd
         <div>
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isCompleted ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30' : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-100 dark:border-slate-800'}`}>
-              %{progressPercent} tamamlandı
+              {isEn ? `${progressPercent}% completed` : `%${progressPercent} tamamlandı`}
             </span>
             <span className="text-[11px]">
               {isCompleted ? (
-                <span className="text-emerald-600 dark:text-emerald-400 font-bold">Tamamlandı! 🎉</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold">{isEn ? 'Completed! 🎉' : 'Tamamlandı! 🎉'}</span>
               ) : daysLeft > 0 ? (
-                <span>Kalan Gün: <strong className="text-slate-700 dark:text-slate-300 font-extrabold">{daysLeft}</strong></span>
+                <span>{isEn ? 'Days Left:' : 'Kalan Gün:'} <strong className="text-slate-700 dark:text-slate-300 font-extrabold">{daysLeft}</strong></span>
               ) : (
-                <span className="text-amber-500 font-semibold">Tarih Geçti</span>
+                <span className="text-amber-500 font-semibold">{isEn ? 'Overdue' : 'Tarih Geçti'}</span>
               )}
             </span>
           </div>
@@ -238,11 +270,45 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit, onDelete, onAd
               style={{ width: `${progressPercent}%` }}
             />
           </div>
+
+          {/* Estimated Reach Date Projection Card */}
+          <div className="mt-4 p-3 rounded-2xl bg-slate-50/50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/50 flex items-center justify-between gap-3 backdrop-blur-sm transition-all duration-300">
+            <div className="flex items-center space-x-2.5">
+              <div className={`p-1.5 rounded-lg bg-gradient-to-br ${preset.gradient} text-white shadow-sm shadow-brand-500/10`}>
+                <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  {isEn ? 'Estimated Completion' : 'Tahmini Ulaşma'}
+                </span>
+                <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200 mt-0.5">
+                  {estDate === 'completed' && (isEn ? 'Already Completed!' : 'Zaten Ulaşıldı!')}
+                  {estDate === 'no_savings' && (isEn ? 'Start saving to estimate' : 'Birikim yapmaya başlayın')}
+                  {estDate === 'no_rate' && (isEn ? 'Calculating rate...' : 'Hesaplanıyor...')}
+                  {estDate !== 'completed' && estDate !== 'no_savings' && estDate !== 'no_rate' && (
+                    <span>
+                      {formatDate(estDate)}
+                    </span>
+                  )}
+                </span>
+              </div>
+            </div>
+            
+            {estDate !== 'completed' && estDate !== 'no_savings' && estDate !== 'no_rate' && (
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                calculateDaysLeft(estDate) <= daysLeft 
+                  ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100/40 dark:border-emerald-900/30' 
+                  : 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-100/40 dark:border-amber-900/30'
+              }`}>
+                {calculateDaysLeft(estDate)} {isEn ? 'days' : 'gün'}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Quick Fund Actions */}
-      <div className="pt-4 border-t border-slate-100 dark:border-slate-800/60">
+      <div className="pt-4 border-t border-slate-100 dark:border-slate-800/60 mt-auto">
         {!showQuickAction ? (
           <div className="flex items-center space-x-2">
             <button
@@ -250,7 +316,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit, onDelete, onAd
               className="flex-1 flex items-center justify-center space-x-1.5 py-2.5 px-4 bg-slate-50 hover:bg-brand-500 dark:bg-slate-800/40 dark:hover:bg-brand-600 text-slate-700 dark:text-slate-300 hover:text-white dark:hover:text-white border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold hover:shadow-sm transition-all duration-200"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Para Ekle</span>
+              <span>{isEn ? 'Add Funds' : 'Para Ekle'}</span>
             </button>
             <button
               onClick={() => { setShowQuickAction('remove'); setErrorMsg(''); }}
@@ -258,13 +324,13 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit, onDelete, onAd
               disabled={goal.current_amount <= 0}
             >
               <Minus className="w-3.5 h-3.5" />
-              <span>Para Çıkar</span>
+              <span>{isEn ? 'Withdraw' : 'Para Çıkar'}</span>
             </button>
           </div>
         ) : (
           <form onSubmit={handleAmountSubmit} className="animate-fade-in space-y-2">
             <div className="flex items-center justify-between text-xs font-semibold text-slate-500 mb-1.5">
-              <span>{showQuickAction === 'add' ? 'Hedefe Para Ekle' : 'Hedef Birikiminden Para Çıkar'}</span>
+              <span>{showQuickAction === 'add' ? (isEn ? 'Add Funds to Goal' : 'Hedefe Para Ekle') : (isEn ? 'Withdraw Funds from Goal' : 'Hedef Birikiminden Para Çıkar')}</span>
               <button 
                 type="button" 
                 onClick={() => setShowQuickAction(null)}
@@ -279,7 +345,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit, onDelete, onAd
                 <input
                   type="number"
                   step="0.01"
-                  placeholder="Miktar girin..."
+                  placeholder={isEn ? 'Enter amount...' : 'Miktar girin...'}
                   value={amountInput}
                   onChange={(e) => setAmountInput(e.target.value)}
                   className="w-full pl-3 pr-8 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-800 dark:text-slate-200 font-bold"

@@ -1,14 +1,16 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, X, Calendar, CheckCircle2, Loader } from 'lucide-react';
+import { Plus, X, Calendar, CheckCircle2, Loader, Copy } from 'lucide-react';
+import * as Icons from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { BudgetCard } from '../components/budgets/BudgetCard';
 import { EmptyState } from '../components/common/EmptyState';
 import { getCurrencySymbol } from '../utils/formatters';
+import { CustomSelect } from '../components/common/CustomSelect';
 
 export const Budgets: React.FC = () => {
   const { user } = useAuth();
-  const { budgets, categories, transactions, addOrUpdateBudget } = useData();
+  const { budgets, categories, transactions, addOrUpdateBudget, copyBudgets } = useData();
 
   // Date States - Default to current month YYYY-MM
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -93,6 +95,53 @@ export const Budgets: React.FC = () => {
     }
   };
 
+  const [isCopying, setIsCopying] = useState(false);
+
+  // Calculate previous month
+  const previousMonth = useMemo(() => {
+    const [year, month] = selectedMonth.split('-').map(Number);
+    if (month === 1) {
+      return `${year - 1}-12`;
+    }
+    const prevMonth = month - 1;
+    return `${year}-${prevMonth < 10 ? '0' : ''}${prevMonth}`;
+  }, [selectedMonth]);
+
+  // Filter previous month's budgets
+  const previousBudgets = useMemo(() => {
+    return budgets.filter(b => b.month === previousMonth);
+  }, [budgets, previousMonth]);
+
+  const showCopyButton = filteredBudgets.length === 0 && previousBudgets.length > 0;
+
+  const handleCopyPreviousBudget = async () => {
+    if (previousBudgets.length === 0) return;
+    setIsCopying(true);
+    setFormError('');
+    try {
+      const res = await copyBudgets(previousMonth, selectedMonth);
+      if (!res.success) {
+        setFormError(res.error || 'Bütçeler kopyalanamadı.');
+      }
+    } catch (err) {
+      setFormError('Kopyalama sırasında bir hata oluştu.');
+    } finally {
+      setIsCopying(false);
+    }
+  };
+
+  const categoryOptions = useMemo(() => {
+    return expenseCategories.map((cat) => {
+      const IconComponent = (Icons as any)[cat.icon || 'HelpCircle'];
+      return {
+        value: cat.id,
+        label: cat.name,
+        color: cat.color,
+        icon: IconComponent ? <IconComponent className="w-3.5 h-3.5" /> : null,
+      };
+    });
+  }, [expenseCategories]);
+
   return (
     <div className="space-y-6">
       
@@ -117,10 +166,26 @@ export const Budgets: React.FC = () => {
               type="month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="premium-input pl-9 py-2 text-xs font-semibold cursor-pointer max-w-[150px]"
+              onClick={(e) => e.currentTarget.showPicker()}
+              className="premium-input pl-9 pr-8 py-2 text-xs font-semibold cursor-pointer w-[180px]"
               title="Görüntülenecek ayı seçin"
             />
           </div>
+
+          {showCopyButton && (
+            <button
+              onClick={handleCopyPreviousBudget}
+              disabled={isCopying}
+              className="premium-btn-secondary flex items-center space-x-2 py-2 px-4 text-xs font-semibold border border-dashed border-brand-500/40 hover:border-brand-500 hover:bg-brand-50/50 dark:hover:bg-brand-900/10 text-brand-600 dark:text-brand-400 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap animate-in fade-in duration-200"
+            >
+              {isCopying ? (
+                <Loader size={12} className="animate-spin text-brand-500" />
+              ) : (
+                <Copy size={12} />
+              )}
+              <span>Önceki Aydan Kopyala</span>
+            </button>
+          )}
 
           <button
             onClick={() => setIsFormOpen(true)}
@@ -183,18 +248,13 @@ export const Budgets: React.FC = () => {
                 <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider pl-1">
                   Kategori *
                 </label>
-                <select
+                <CustomSelect
+                  options={categoryOptions}
                   value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="premium-input appearance-none bg-no-repeat cursor-pointer text-sm"
-                  style={{ backgroundImage: 'url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3E%3Cpath stroke=\'%236B7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'m6 8 4 4 4-4\'/%3E%3C/svg%3E")', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25rem' }}
+                  onChange={setCategoryId}
+                  placeholder="Gider Kategorisi Seçin"
                   required
-                >
-                  <option value="" disabled>Gider Kategorisi Seçin</option>
-                  {expenseCategories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
+                />
               </div>
 
               {/* Limit Amount Input */}
