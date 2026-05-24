@@ -5,6 +5,8 @@
 export interface Profile {
   id: string;
   email: string;
+  full_name?: string;
+  role?: 'admin' | 'contributor' | 'viewer' | string;
   currency: 'TRY' | 'USD' | 'EUR';
   theme: 'light' | 'dark' | 'system';
   lang?: 'tr' | 'en';

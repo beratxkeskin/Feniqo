@@ -74,7 +74,7 @@ const translations = {
 
 export const Debts: React.FC = () => {
   const { user } = useAuth();
-  const { debts, deleteDebt, toggleDebtPaidStatus } = useData();
+  const { debts, deleteDebt, toggleDebtPaidStatus, currentUserRole } = useData();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingDebt, setEditingDebt] = useState<any>(null);
@@ -163,15 +163,17 @@ export const Debts: React.FC = () => {
           </p>
         </div>
 
-        <div>
-          <button
-            onClick={handleAddNew}
-            className="premium-btn-primary flex items-center space-x-2 py-2.5 px-4.5 text-xs font-semibold shadow-md whitespace-nowrap"
-          >
-            <Plus size={15} strokeWidth={2.5} />
-            <span>{t.addNew}</span>
-          </button>
-        </div>
+        {currentUserRole !== 'viewer' && (
+          <div>
+            <button
+              onClick={handleAddNew}
+              className="premium-btn-primary flex items-center space-x-2 py-2.5 px-4.5 text-xs font-semibold shadow-md whitespace-nowrap cursor-pointer"
+            >
+              <Plus size={15} strokeWidth={2.5} />
+              <span>{t.addNew}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Stats Summary Cards */}
@@ -325,8 +327,8 @@ export const Debts: React.FC = () => {
           iconName="Coins"
           title={t.emptyTitle}
           description={t.emptyDesc}
-          actionText={t.addNew}
-          onAction={handleAddNew}
+          actionText={currentUserRole !== 'viewer' ? t.addNew : undefined}
+          onAction={currentUserRole !== 'viewer' ? handleAddNew : undefined}
         />
       )}
 

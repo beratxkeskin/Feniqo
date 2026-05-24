@@ -19,7 +19,8 @@ import {
   ArrowUpRight, 
   ArrowDownLeft, 
   PieChart as PieIcon, 
-  LineChart as LineIcon 
+  LineChart as LineIcon,
+  RefreshCw
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -69,7 +70,16 @@ const translations = {
     quantityLabel: 'Miktar',
     purchasePriceLabel: 'Alış Fiyatı',
     profitVal: 'Kâr / Zarar',
-    noProfit: 'Maliyet Girilmedi'
+    noProfit: 'Maliyet Girilmedi',
+    lastUpdated: 'Son Güncelleme',
+    justNow: 'Şimdi',
+    minutesAgo: '{min} dk önce',
+    hoursAgo: '{hr} sa önce',
+    daysAgo: '{day} gün önce',
+    refreshRatesTooltip: 'Kurları Şimdi Güncelle',
+    ratesModeRealtime: 'Canlı Kur',
+    ratesModeDaily: 'Günlük Önbellek',
+    ratesModeManual: 'Manuel Kur'
   },
   en: {
     title: 'Asset Tracker & Net Worth',
@@ -105,11 +115,21 @@ const translations = {
     quantityLabel: 'Quantity',
     purchasePriceLabel: 'Purchase Price',
     profitVal: 'Profit / Loss',
-    noProfit: 'No cost basis'
+    noProfit: 'No cost basis',
+    lastUpdated: 'Last Update',
+    justNow: 'Just now',
+    minutesAgo: '{min}m ago',
+    hoursAgo: '{hr}h ago',
+    daysAgo: '{day}d ago',
+    refreshRatesTooltip: 'Refresh Rates Now',
+    ratesModeRealtime: 'Real-time Rates',
+    ratesModeDaily: 'Daily Cached',
+    ratesModeManual: 'Manual Rates'
   }
 };
 
 const ASSET_COLORS: Record<string, string> = {
+  liquid: '#06B6D4',         // Cyan
   cash: '#10B981',           // Emerald Green
   crypto: '#F59E0B',         // Amber/Orange
   stocks: '#3B82F6',         // Royal Blue
@@ -120,7 +140,8 @@ const ASSET_COLORS: Record<string, string> = {
 
 export const NetWorth: React.FC = () => {
   const { user } = useAuth();
-  const { assets, debts, transactions, addAsset, updateAsset, deleteAsset } = useData();
+  const { assets, debts, transactions, addAsset, updateAsset, deleteAsset, activeWorkspace } = useData();
+  const [isShared, setIsShared] = useState(true);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<any>(null);
@@ -143,45 +164,163 @@ export const NetWorth: React.FC = () => {
     return localStorage.getItem('moneymate_portfolio_currency') || user?.currency || 'TRY';
   });
 
-  const [rates, setRates] = useState<Record<string, number>>({ TRY: 1, USD: 1, EUR: 1 });
-
-  // Fetch exchange rates from base currency relative to target currency
-  React.useEffect(() => {
-    const base = user?.currency || 'TRY';
-    let isMounted = true;
-    
-    const fetchRates = async () => {
+  const [rates, setRates] = useState<Record<string, number>>(() => {
+    const baseCur = user?.currency || 'TRY';
+    const cached = localStorage.getItem(`moneymate_cached_rates_${baseCur}`);
+    if (cached) {
       try {
-        const res = await fetch(`https://api.exchangerate-api.com/v4/latest/${base}`);
-        if (!res.ok) throw new Error('API error');
-        const data = await res.json();
-        if (isMounted) {
-          setRates(data.rates || { TRY: 1, USD: 1, EUR: 1 });
-        }
-      } catch (err) {
-        console.error("Exchange rates fetch failed, using fallback static rates", err);
-        if (isMounted) {
-          if (base === 'TRY') {
-            setRates({ TRY: 1, USD: 0.031, EUR: 0.028 });
-          } else if (base === 'USD') {
-            setRates({ TRY: 32.5, USD: 1, EUR: 0.92 });
-          } else {
-            setRates({ TRY: 35.0, USD: 1.09, EUR: 1 });
+        return JSON.parse(cached);
+      } catch (e) {
+        // Fallback
+      }
+    }
+    return { TRY: 1, USD: 1, EUR: 1 };
+  });
+
+  const [ratesTimestamp, setRatesTimestamp] = useState<number | null>(() => {
+    const baseCur = user?.currency || 'TRY';
+    const stored = localStorage.getItem(`moneymate_rates_timestamp_${baseCur}`);
+    return stored ? parseInt(stored) : null;
+  });
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [tick, setTick] = useState(0);
+
+  const isMountedRef = React.useRef(true);
+
+  React.useEffect(() => {
+    isMountedRef.current = true;
+    const interval = setInterval(() => {
+      setTick(t => t + 1);
+    }, 30000);
+    return () => {
+      isMountedRef.current = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Consume tick in a dummy effect to satisfy strict unused variable checks while driving periodic rates re-evaluations
+  React.useEffect(() => {}, [tick]);
+
+  const fetchRates = async (force: boolean = false) => {
+    const baseCur = user?.currency || 'TRY';
+    const mode = localStorage.getItem('moneymate_rates_refresh') || 'daily';
+    
+    const cachedRatesStr = localStorage.getItem(`moneymate_cached_rates_${baseCur}`);
+    const cachedTimestampStr = localStorage.getItem(`moneymate_rates_timestamp_${baseCur}`);
+    
+    if (!force && mode === 'daily' && cachedRatesStr && cachedTimestampStr) {
+      const timestamp = parseInt(cachedTimestampStr);
+      if (!isNaN(timestamp) && (Date.now() - timestamp < 24 * 60 * 60 * 1000)) {
+        try {
+          const parsed = JSON.parse(cachedRatesStr);
+          if (isMountedRef.current) {
+            setRates(parsed);
+            setRatesTimestamp(timestamp);
           }
+          return;
+        } catch (e) {
+          // If parse fails, fetch new rates
         }
       }
-    };
+    }
 
-    fetchRates();
-    return () => { isMounted = false; };
+    if (!force && mode === 'manual' && cachedRatesStr && cachedTimestampStr) {
+      try {
+        const parsed = JSON.parse(cachedRatesStr);
+        if (isMountedRef.current) {
+          setRates(parsed);
+          setRatesTimestamp(parseInt(cachedTimestampStr));
+        }
+        return;
+      } catch (e) {
+        // If parse fails, fetch new rates
+      }
+    }
+
+    if (isMountedRef.current) {
+      setIsRefreshing(true);
+    }
+    
+    try {
+      const res = await fetch(`https://api.exchangerate-api.com/v4/latest/${baseCur}`);
+      if (!res.ok) throw new Error('API error');
+      const data = await res.json();
+      const newRates = data.rates || { TRY: 1, USD: 1, EUR: 1 };
+      
+      const now = Date.now();
+      localStorage.setItem(`moneymate_cached_rates_${baseCur}`, JSON.stringify(newRates));
+      localStorage.setItem(`moneymate_rates_timestamp_${baseCur}`, String(now));
+      
+      if (isMountedRef.current) {
+        setRates(newRates);
+        setRatesTimestamp(now);
+      }
+    } catch (err) {
+      console.error("Exchange rates fetch failed, using fallback or cache", err);
+      if (cachedRatesStr) {
+        try {
+          const parsed = JSON.parse(cachedRatesStr);
+          if (isMountedRef.current) {
+            setRates(parsed);
+            if (cachedTimestampStr) setRatesTimestamp(parseInt(cachedTimestampStr));
+          }
+          return;
+        } catch (e) {
+          // ignore
+        }
+      }
+      
+      let fallbackRates = { TRY: 1, USD: 1, EUR: 1 };
+      if (baseCur === 'TRY') {
+        fallbackRates = { TRY: 1, USD: 0.031, EUR: 0.028 };
+      } else if (baseCur === 'USD') {
+        fallbackRates = { TRY: 32.5, USD: 1, EUR: 0.92 };
+      } else {
+        fallbackRates = { TRY: 35.0, USD: 1.09, EUR: 1 };
+      }
+      if (isMountedRef.current) {
+        setRates(fallbackRates);
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsRefreshing(false);
+      }
+    }
+  };
+
+  React.useEffect(() => {
+    fetchRates(false);
+    const baseCur = user?.currency || 'TRY';
+    const storedTimestamp = localStorage.getItem(`moneymate_rates_timestamp_${baseCur}`);
+    setRatesTimestamp(storedTimestamp ? parseInt(storedTimestamp) : null);
   }, [user?.currency]);
+
+  const getRelativeTime = (timestamp: number | null) => {
+    if (!timestamp) return '—';
+    const diffMs = Date.now() - timestamp;
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return t.justNow;
+    if (diffMins < 60) return t.minutesAgo.replace('{min}', String(diffMins));
+    const diffHrs = Math.floor(diffMins / 60);
+    if (diffHrs < 24) return t.hoursAgo.replace('{hr}', String(diffHrs));
+    const diffDays = Math.floor(diffHrs / 24);
+    return t.daysAgo.replace('{day}', String(diffDays));
+  };
 
   const rateMultiplier = rates[valuationCurrency] || 1;
 
   // 1. Calculate Core Financial Metrics
+  const liquidCash = useMemo(() => {
+    const totalInc = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    const totalExp = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    return totalInc - totalExp;
+  }, [transactions]);
+
   const currentAssetsSum = useMemo(() => {
-    return assets.reduce((sum, a) => sum + a.value, 0);
-  }, [assets]);
+    const manualSum = assets.reduce((sum, a) => sum + a.value, 0);
+    return manualSum + liquidCash;
+  }, [assets, liquidCash]);
 
   const currentLiabilitiesSum = useMemo(() => {
     // Sum only unpaid debts
@@ -218,15 +357,19 @@ export const NetWorth: React.FC = () => {
 
   // 3. Recharts Donut Pie Data Mapping
   const pieData = useMemo(() => {
-    const types = ['cash', 'crypto', 'stocks', 'real_estate', 'precious_metals', 'other'];
+    const types = ['liquid', 'cash', 'crypto', 'stocks', 'real_estate', 'precious_metals', 'other'];
     return types.map(key => {
-      const totalVal = assets
-        .filter(a => a.type === key)
-        .reduce((sum, a) => sum + a.value, 0);
+      let totalVal = 0;
+      if (key === 'liquid') {
+        totalVal = liquidCash;
+      } else {
+        totalVal = assets.filter(a => a.type === key).reduce((sum, a) => sum + a.value, 0);
+      }
 
       // Translate type name
       let label = t.other;
-      if (key === 'cash') label = lang === 'tr' ? 'Nakit' : 'Cash';
+      if (key === 'liquid') label = lang === 'tr' ? 'Likit Nakit' : 'Liquid Cash';
+      else if (key === 'cash') label = lang === 'tr' ? 'Varlık Nakit' : 'Asset Cash';
       else if (key === 'crypto') label = lang === 'tr' ? 'Kripto' : 'Crypto';
       else if (key === 'stocks') label = lang === 'tr' ? 'Hisse' : 'Stocks';
       else if (key === 'real_estate') label = lang === 'tr' ? 'Gayrimenkul' : 'Real Estate';
@@ -234,11 +377,11 @@ export const NetWorth: React.FC = () => {
 
       return {
         name: label,
-        value: totalVal * rateMultiplier,
+        value: totalVal > 0 ? totalVal * rateMultiplier : 0,
         key: key
       };
     }).filter(item => item.value > 0);
-  }, [assets, lang, t, rateMultiplier]);
+  }, [assets, liquidCash, lang, t, rateMultiplier]);
 
   // 4. Backward Cumulative Net Worth Projection Trend
   const trendData = useMemo(() => {
@@ -291,6 +434,7 @@ export const NetWorth: React.FC = () => {
     setValue('');
     setQuantity('');
     setPurchasePrice('');
+    setIsShared(true);
     setErrorMsg('');
     setEditingAsset(null);
     setIsFormOpen(true);
@@ -303,6 +447,7 @@ export const NetWorth: React.FC = () => {
     setValue(asset.value.toString());
     setQuantity(asset.quantity ? asset.quantity.toString() : '');
     setPurchasePrice(asset.purchase_price ? asset.purchase_price.toString() : '');
+    setIsShared(asset.workspace_id !== null);
     setErrorMsg('');
     setIsFormOpen(true);
   };
@@ -347,7 +492,8 @@ export const NetWorth: React.FC = () => {
       type: type as any,
       value: parsedValue,
       quantity: parsedQty,
-      purchase_price: parsedCost
+      purchase_price: parsedCost,
+      workspace_id: activeWorkspace ? (isShared ? activeWorkspace.id : null) : null
     };
 
     let result;
@@ -381,38 +527,75 @@ export const NetWorth: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-3 self-end sm:self-center">
-          {/* Valuation Currency Segment Switcher */}
-          <div className="bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200/40 dark:border-slate-800/60 flex items-center shadow-sm shrink-0">
-            {['TRY', 'USD', 'EUR'].map((cur) => {
-              const isActive = valuationCurrency === cur;
-              let symbol = '₺';
-              if (cur === 'USD') symbol = '$';
-              if (cur === 'EUR') symbol = '€';
-              
-              return (
-                <button
-                  key={cur}
-                  onClick={() => {
-                    setValuationCurrency(cur);
-                    localStorage.setItem('moneymate_portfolio_currency', cur);
-                  }}
-                  className={`py-1.5 px-3 rounded-lg text-[10px] font-black tracking-wider transition-all duration-200 ${
-                    isActive
-                      ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm scale-[1.02]'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                  title={`${cur} cinsinden değerle`}
-                >
-                  <span className="mr-0.5 font-extrabold">{symbol}</span>
-                  {cur}
-                </button>
-              );
-            })}
+          {/* Valuation Currency Selector & Status */}
+          <div className="flex flex-col items-end sm:items-start select-none">
+            <div className="flex items-center space-x-2">
+              {/* Valuation Currency Segment Switcher */}
+              <div className="bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200/40 dark:border-slate-800/60 flex items-center shadow-sm shrink-0">
+                {['TRY', 'USD', 'EUR'].map((cur) => {
+                  const isActive = valuationCurrency === cur;
+                  let symbol = '₺';
+                  if (cur === 'USD') symbol = '$';
+                  if (cur === 'EUR') symbol = '€';
+                  
+                  return (
+                    <button
+                      key={cur}
+                      onClick={() => {
+                        setValuationCurrency(cur);
+                        localStorage.setItem('moneymate_portfolio_currency', cur);
+                      }}
+                      className={`py-1.5 px-3 rounded-lg text-[10px] font-black tracking-wider transition-all duration-200 ${
+                        isActive
+                          ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm scale-[1.02]'
+                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                      }`}
+                      title={`${cur} cinsinden değerle`}
+                    >
+                      <span className="mr-0.5 font-extrabold">{symbol}</span>
+                      {cur}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Refresh button with rotate transition */}
+              <button
+                onClick={() => fetchRates(true)}
+                disabled={isRefreshing}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl transition-all duration-200 border border-slate-200/30 dark:border-slate-800/50 bg-white dark:bg-slate-900 shadow-sm flex items-center justify-center cursor-pointer hover:scale-105 disabled:opacity-50 active:scale-95 shrink-0"
+                title={t.refreshRatesTooltip}
+              >
+                <RefreshCw size={13} className={`${isRefreshing ? 'animate-spin text-brand-500' : 'text-slate-400'}`} />
+              </button>
+            </div>
+
+            {/* Last updated and refresh mode subtext */}
+            <div className="flex items-center space-x-1.5 text-[9px] font-semibold text-slate-400 dark:text-slate-500 mt-1 pl-1">
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                (localStorage.getItem('moneymate_rates_refresh') || 'daily') === 'realtime'
+                  ? 'bg-amber-500 animate-pulse'
+                  : (localStorage.getItem('moneymate_rates_refresh') || 'daily') === 'daily'
+                  ? 'bg-indigo-500'
+                  : 'bg-emerald-500'
+              }`} />
+              <span>
+                {
+                  (localStorage.getItem('moneymate_rates_refresh') || 'daily') === 'realtime'
+                    ? t.ratesModeRealtime
+                    : (localStorage.getItem('moneymate_rates_refresh') || 'daily') === 'daily'
+                    ? t.ratesModeDaily
+                    : t.ratesModeManual
+                }
+              </span>
+              <span>•</span>
+              <span>{t.lastUpdated}: {getRelativeTime(ratesTimestamp)}</span>
+            </div>
           </div>
 
           <button
             onClick={handleAddNew}
-            className="premium-btn-primary flex items-center space-x-2 py-2.5 px-4.5 text-xs font-semibold shadow-md whitespace-nowrap"
+            className="premium-btn-primary flex items-center space-x-2 py-2.5 px-4.5 text-xs font-semibold shadow-md whitespace-nowrap self-start sm:self-center"
           >
             <Plus size={15} strokeWidth={2.5} />
             <span>{t.addNewAsset}</span>
@@ -572,7 +755,7 @@ export const NetWorth: React.FC = () => {
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {
                         return (
-                          <div className="bg-slate-950 dark:bg-white text-white dark:text-slate-955 px-3.5 py-2.5 rounded-2xl border border-white/10 shadow-xl text-xs font-bold">
+                          <div className="bg-slate-950 dark:bg-white text-white dark:text-slate-950 px-3.5 py-2.5 rounded-2xl border border-white/10 shadow-xl text-xs font-bold">
                             <p className="opacity-60 text-[10px] mb-1 font-semibold">{payload[0].payload.name}</p>
                             <p className="text-brand-500 dark:text-brand-600">
                               {lang === 'tr' ? 'Net Servet: ' : 'Net Worth: '}
@@ -645,12 +828,25 @@ export const NetWorth: React.FC = () => {
                       <td className="py-4 px-6 font-bold text-slate-800 dark:text-white text-xs">
                         <div className="flex items-center space-x-3">
                           <div 
-                            className="p-2 rounded-xl text-white shadow-sm shrink-0 flex items-center justify-center"
+                            className="p-2 rounded-xl text-white shadow-sm shrink-0 flex items-center justify-center font-semibold"
                             style={{ backgroundColor: assetColor }}
                           >
                             {getAssetIcon(asset.type)}
                           </div>
-                          <span>{asset.name}</span>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-slate-800 dark:text-white">{asset.name}</span>
+                            {activeWorkspace && (
+                              <span className={`text-[8px] font-extrabold px-1.5 py-0.2 rounded-md uppercase tracking-wider w-max mt-1 ${
+                                !asset.workspace_id 
+                                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-505 dark:text-slate-400' 
+                                  : 'bg-indigo-500/10 text-indigo-650 dark:text-indigo-400'
+                              }`}>
+                                {!asset.workspace_id 
+                                  ? (lang === 'tr' ? '🔒 Kişisel (Gizli)' : '🔒 Private (Hidden)') 
+                                  : (lang === 'tr' ? '👥 Ortak (Shared)' : '👥 Shared')}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
 
@@ -849,6 +1045,31 @@ export const NetWorth: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {/* Workspace sharing toggle */}
+              {activeWorkspace && (
+                <div className="p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800/50 flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                      {lang === 'tr' ? 'Ortak Bütçede Paylaş' : 'Share in Collaborative Workspace'}
+                    </span>
+                    <span className="text-[10px] font-medium text-slate-400 dark:text-slate-505 block leading-relaxed">
+                      {lang === 'tr' 
+                        ? 'Açık olursa ortağınız bu varlığı görebilir. Kapalıysa kilitli kalır.' 
+                        : 'If enabled, your partner can see this asset. Otherwise, it is hidden.'}
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none">
+                    <input 
+                      type="checkbox" 
+                      checked={isShared} 
+                      onChange={(e) => setIsShared(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-brand-500"></div>
+                  </label>
+                </div>
+              )}
 
               {/* Actions Button Bar */}
               <div className="flex space-x-3 pt-5 border-t border-slate-100 dark:border-slate-800/60 shrink-0">

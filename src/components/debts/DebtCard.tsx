@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Debt } from '../../db/types';
 import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { 
   Calendar, 
@@ -60,6 +61,7 @@ const translations = {
 
 export const DebtCard: React.FC<DebtCardProps> = ({ debt, onEdit, onDelete, onTogglePaidStatus }) => {
   const { user } = useAuth();
+  const { currentUserRole } = useData();
   const [isToggling, setIsToggling] = useState(false);
   const lang = user?.lang || 'tr';
   const t = translations[lang];
@@ -155,7 +157,7 @@ export const DebtCard: React.FC<DebtCardProps> = ({ debt, onEdit, onDelete, onTo
       {/* Header Info */}
       <div className="flex items-start justify-between mb-4 mt-1">
         <div className="flex items-center space-x-3.5 flex-1 min-w-0">
-          <div className={`p-3 rounded-2xl border ${themeStyles.iconBg} shadow-sm transition-transform duration-300 hover:scale-105 flex-shrink-0`}>
+          <div className={`p-3 rounded-2xl border ${themeStyles.iconBg} shadow-sm transition-transform duration-300 hover:scale-105 flex-shrink-0 flex items-center justify-center`}>
             {isPaid ? (
               <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
             ) : isDebt ? (
@@ -181,22 +183,24 @@ export const DebtCard: React.FC<DebtCardProps> = ({ debt, onEdit, onDelete, onTo
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center space-x-0.5 ml-2">
-          <button 
-            onClick={() => onEdit(debt)}
-            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all"
-            title={t.edit}
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
-          <button 
-            onClick={() => onDelete(debt.id)}
-            className="p-2 text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all"
-            title={t.delete}
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
+        {currentUserRole !== 'viewer' && (
+          <div className="flex items-center space-x-0.5 ml-2">
+            <button 
+              onClick={() => onEdit(debt)}
+              className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
+              title={t.edit}
+            >
+              <Edit2 className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => onDelete(debt.id)}
+              className="p-2 text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all cursor-pointer"
+              title={t.delete}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tutar ve Tip Etiketi */}
@@ -261,22 +265,24 @@ export const DebtCard: React.FC<DebtCardProps> = ({ debt, onEdit, onDelete, onTo
       </div>
 
       {/* Quick Paid Status Toggle Button */}
-      <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60 mt-3.5">
-        <button
-          onClick={handleToggle}
-          disabled={isToggling}
-          className={`w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all duration-300 ${
-            isPaid
-              ? 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800'
-              : isDebt
-                ? 'bg-rose-50 hover:bg-rose-600 dark:bg-rose-950/20 dark:hover:bg-rose-600 text-rose-600 dark:text-rose-400 hover:text-white dark:hover:text-white border border-rose-100/50 dark:border-rose-900/20'
-                : 'bg-emerald-50 hover:bg-emerald-600 dark:bg-emerald-950/20 dark:hover:bg-emerald-600 text-emerald-600 dark:text-emerald-400 hover:text-white dark:hover:text-white border border-emerald-100/50 dark:border-emerald-900/20'
-          }`}
-        >
-          <CheckCircle2 className={`w-4 h-4 transition-transform duration-300 ${isToggling ? 'scale-75' : 'scale-100'} ${isPaid ? 'text-emerald-500' : ''}`} />
-          <span>{isPaid ? t.markAsUnpaid : t.markAsPaid}</span>
-        </button>
-      </div>
+      {currentUserRole !== 'viewer' && (
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60 mt-3.5">
+          <button
+            onClick={handleToggle}
+            disabled={isToggling}
+            className={`w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer ${
+              isPaid
+                ? 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800'
+                : isDebt
+                  ? 'bg-rose-50 hover:bg-rose-600 dark:bg-rose-950/20 dark:hover:bg-rose-600 text-rose-600 dark:text-rose-400 hover:text-white dark:hover:text-white border border-rose-100/50 dark:border-rose-900/20'
+                  : 'bg-emerald-50 hover:bg-emerald-600 dark:bg-emerald-950/20 dark:hover:bg-emerald-600 text-emerald-600 dark:text-emerald-400 hover:text-white dark:hover:text-white border border-emerald-100/50 dark:border-emerald-900/20'
+            }`}
+          >
+            <CheckCircle2 className={`w-4 h-4 transition-transform duration-300 ${isToggling ? 'scale-75' : 'scale-100'} ${isPaid ? 'text-emerald-500' : ''}`} />
+            <span>{isPaid ? t.markAsUnpaid : t.markAsPaid}</span>
+          </button>
+        </div>
+      )}
 
     </div>
   );

@@ -12,7 +12,7 @@ interface TransactionListProps {
 }
 
 export const TransactionList: React.FC<TransactionListProps> = ({ transactions, onEdit }) => {
-  const { categories, deleteTransaction, activeWorkspace, workspaceMembers } = useData();
+  const { categories, deleteTransaction, activeWorkspace, workspaceMembers, currentUserRole } = useData();
   const { user } = useAuth();
   const currency = user?.currency || 'TRY';
 
@@ -23,6 +23,14 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
       await deleteTransaction(txToDelete.id);
       setTxToDelete(null);
     }
+  };
+
+  const canEditOrDelete = (tx: Transaction) => {
+    if (currentUserRole === 'viewer') return false;
+    if (currentUserRole === 'contributor') {
+      return tx.user_id === user?.id;
+    }
+    return true; // admin
   };
 
   return (
@@ -48,7 +56,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
                 const categoryColor = category ? category.color : '#6B7280';
                 const categoryIconName = (category?.icon || 'HelpCircle') as keyof typeof Icons;
                 const IconComponent = Icons[categoryIconName] as React.ComponentType<any>;
-
+ 
                 const spender = workspaceMembers.find(m => m.id === tx.user_id);
                 const spenderName = spender 
                   ? (spender.email === user?.email ? (user?.lang === 'en' ? 'You' : 'Siz') : spender.email.split('@')[0])
@@ -90,7 +98,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
                           </span>
                           {tx.receipt_url && (
                             <a href={tx.receipt_url} target="_blank" rel="noopener noreferrer" className="text-brand-500 hover:text-brand-600 dark:hover:text-brand-400 shrink-0 p-1 bg-brand-50 dark:bg-brand-900/20 rounded-md" title="Makbuzu Görüntüle">
-                              <Icons.Paperclip size={14} />
+                               <Icons.Paperclip size={14} />
                             </a>
                           )}
                         </div>
@@ -130,22 +138,29 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
 
                     {/* Actions Column */}
                     <td className="px-6 py-4.5 whitespace-nowrap text-center">
-                      <div className="flex items-center justify-center space-x-1.5">
-                        <button
-                          onClick={() => onEdit(tx)}
-                          className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 rounded-lg transition-colors"
-                          title="İşlemi Düzenle"
-                        >
-                          <Icons.Edit2 size={15} />
-                        </button>
-                        <button
-                          onClick={() => setTxToDelete(tx)}
-                          className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg transition-colors"
-                          title="İşlemi Sil"
-                        >
-                          <Icons.Trash2 size={15} />
-                        </button>
-                      </div>
+                      {canEditOrDelete(tx) ? (
+                        <div className="flex items-center justify-center space-x-1.5">
+                          <button
+                            onClick={() => onEdit(tx)}
+                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 rounded-lg transition-colors"
+                            title="İşlemi Düzenle"
+                          >
+                            <Icons.Edit2 size={15} />
+                          </button>
+                          <button
+                            onClick={() => setTxToDelete(tx)}
+                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg transition-colors"
+                            title="İşlemi Sil"
+                          >
+                            <Icons.Trash2 size={15} />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold italic flex items-center justify-center gap-1 select-none">
+                          <Icons.Lock size={10} />
+                          <span>{user?.lang === 'en' ? 'Locked' : 'Kilitli'}</span>
+                        </span>
+                      )}
                     </td>
 
                   </tr>
@@ -198,20 +213,27 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
                   </div>
                   
                   {/* Actions */}
-                  <div className="flex items-center space-x-1">
-                    <button
-                      onClick={() => onEdit(tx)}
-                      className="p-1.5 text-slate-400 hover:text-brand-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-                    >
-                      <Icons.Edit2 size={14} />
-                    </button>
-                    <button
-                      onClick={() => setTxToDelete(tx)}
-                      className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-                    >
-                      <Icons.Trash2 size={14} />
-                    </button>
-                  </div>
+                  {canEditOrDelete(tx) ? (
+                    <div className="flex items-center space-x-1">
+                      <button
+                        onClick={() => onEdit(tx)}
+                        className="p-1.5 text-slate-400 hover:text-brand-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                      >
+                        <Icons.Edit2 size={14} />
+                      </button>
+                      <button
+                        onClick={() => setTxToDelete(tx)}
+                        className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                      >
+                        <Icons.Trash2 size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold italic flex items-center gap-0.5 select-none pr-1">
+                      <Icons.Lock size={9} />
+                      <span>{user?.lang === 'en' ? 'Locked' : 'Kilitli'}</span>
+                    </span>
+                  )}
                 </div>
 
                 {/* Body: Description, Payment Method, Amount */}

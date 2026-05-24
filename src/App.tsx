@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
 import { Layout } from './components/layout/Layout';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
+import { pwaStore } from './utils/pwaStore';
 
 // Pages
 import Login from './pages/Login';
@@ -125,6 +126,30 @@ const NavigationRouter: React.FC = () => {
 };
 
 export default function App() {
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      pwaStore.setDeferredPrompt(e);
+    };
+
+    const handleAppInstalled = () => {
+      pwaStore.setInstalled(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    // Ek bir kontrol: Uygulama halihazırda standalone modda açılmış olabilir
+    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+      pwaStore.setInstalled(true);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
   return (
     <AuthProvider>
       <NavigationRouter />

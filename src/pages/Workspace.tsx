@@ -28,7 +28,9 @@ export const Workspace: React.FC = () => {
     setActiveWorkspace,
     transactions,
     addTransaction,
-    categories
+    categories,
+    currentUserRole,
+    updateMemberRole
   } = useData();
 
   const isEn = user?.lang === 'en';
@@ -327,6 +329,49 @@ export const Workspace: React.FC = () => {
         )}
       </div>
 
+      {isDemo && activeWorkspace && (
+        <div className="p-4 bg-slate-900 border border-slate-800 text-white rounded-2xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-xl">
+              <Users size={20} className="text-indigo-400" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-white tracking-wide uppercase">
+                {isEn ? 'Demo Perspective Simulator' : 'Demo Rol Perspektif Simülatörü'}
+              </h4>
+              <p className="text-[10px] text-slate-400 font-medium leading-relaxed mt-0.5">
+                {isEn 
+                  ? 'Switch your active role instantly to test how the UI restricts Add/Edit/Delete permissions.' 
+                  : 'Ekle/Sil/Düzenle buton kısıtlamalarını canlı görmek için kendi rolünüzü simüle edin.'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {(['admin', 'contributor', 'viewer'] as const).map((role) => {
+              const isActive = currentUserRole === role;
+              const label = role === 'admin' 
+                ? (isEn ? '👑 Admin' : '👑 Yönetici') 
+                : role === 'viewer'
+                  ? (isEn ? '👁️ Viewer' : '👁️ Gözlemci')
+                  : (isEn ? '✍️ Contributor' : '✍️ Katılımcı');
+              return (
+                <button
+                  key={role}
+                  onClick={() => updateMemberRole(user.id, role)}
+                  className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                    isActive 
+                      ? 'bg-brand-500 text-white shadow-md shadow-brand-500/25 scale-[1.03]' 
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {isDemo && activeWorkspace?.id === 'demo-workspace-family' && (
         <div className="p-3 bg-brand-500/10 border border-brand-500/20 text-brand-600 dark:text-brand-400 text-xs rounded-2xl flex items-center gap-2.5 leading-relaxed font-semibold">
           <span>💡</span>
@@ -606,9 +651,41 @@ export const Workspace: React.FC = () => {
                             {member.email.split('@')[0]}
                             {isMe && <span className="text-[9px] font-extrabold text-slate-400 dark:text-slate-500 ml-1">({isEn ? 'You' : 'Siz'})</span>}
                           </h4>
-                          <span className="text-[9px] text-slate-400 truncate max-w-[130px] block" title={member.email}>
+                          <span className="text-[9px] text-slate-400 truncate max-w-[130px] block pb-1" title={member.email}>
                             {member.email}
                           </span>
+                          
+                          {/* Role Selector or Badge */}
+                          <div className="flex items-center">
+                            {currentUserRole === 'admin' && !isMe ? (
+                              <select
+                                value={member.role || 'contributor'}
+                                onChange={async (e) => {
+                                  const targetRole = e.target.value as 'admin' | 'contributor' | 'viewer';
+                                  await updateMemberRole(member.id, targetRole);
+                                }}
+                                className="text-[9px] font-bold bg-slate-100 dark:bg-slate-800 border-none rounded-md px-1.5 py-0.5 text-slate-700 dark:text-slate-300 focus:ring-1 focus:ring-brand-500 cursor-pointer"
+                              >
+                                <option value="admin">{isEn ? 'Admin' : 'Yönetici'}</option>
+                                <option value="contributor">{isEn ? 'Contributor' : 'Katılımcı'}</option>
+                                <option value="viewer">{isEn ? 'Viewer' : 'Gözlemci'}</option>
+                              </select>
+                            ) : (
+                              <span className={`text-[8px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
+                                (member.role === 'admin') 
+                                  ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400' 
+                                  : (member.role === 'viewer')
+                                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                                    : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                              }`}>
+                                {member.role === 'admin' 
+                                  ? (isEn ? '👑 Admin' : '👑 Yönetici') 
+                                  : member.role === 'viewer' 
+                                    ? (isEn ? '👁️ Viewer' : '👁️ Gözlemci') 
+                                    : (isEn ? '✍️ Contributor' : '✍️ Katılımcı')}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       
@@ -625,6 +702,27 @@ export const Workspace: React.FC = () => {
                 })}
               </div>
             )}
+
+            {/* Roles Legend / Guide */}
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800/60 space-y-2.5">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider pl-0.5 block">
+                {isEn ? 'Role Permissions Guide' : 'Yetki Seviyeleri Rehberi'}
+              </span>
+              <div className="space-y-3 text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                <div className="flex items-start gap-2">
+                  <span className="shrink-0 bg-rose-500/10 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded font-extrabold text-[8px] uppercase tracking-wide">👑 Admin</span>
+                  <p>{isEn ? 'Full Access: Can add/edit/delete transactions, budgets, goals, and update other partner roles.' : 'Tam Yetki: Gelir/gider ekleme/silme, bütçe/hedef oluşturma ve ortakların rollerini yönetme yetkisine sahiptir.'}</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="shrink-0 bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded font-extrabold text-[8px] uppercase tracking-wide">✍️ Katılımcı</span>
+                  <p>{isEn ? 'Contributor: Can add transactions. Can edit/delete ONLY their own entries. Cannot change budgets/goals.' : 'Katılımcı: Bütçeye işlem ekleyebilir, ancak sadece kendi işlemlerini düzenleyip silebilir. Bütçe/hedef oluşturamaz.'}</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="shrink-0 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded font-extrabold text-[8px] uppercase tracking-wide">👁️ Gözlemci</span>
+                  <p>{isEn ? 'Viewer: Read-only access. Can view tables and charts, but all add/edit/delete buttons are completely hidden.' : 'Gözlemci: Sadece okuma yetkisi. Grafikleri ve tabloları izler, hiçbir ekleme/düzenleme/silme işlemi yapamaz.'}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

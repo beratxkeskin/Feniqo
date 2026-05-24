@@ -71,12 +71,17 @@ interface DataContextType {
   
   // Asset CRUD
   assets: Asset[];
-  addAsset: (asset: Omit<Asset, 'id' | 'user_id' | 'created_at'>) => Promise<{ success: boolean; error?: string }>;
+  addAsset: (asset: Omit<Asset, 'id' | 'user_id' | 'created_at'> & { workspace_id?: string | null }) => Promise<{ success: boolean; error?: string }>;
   updateAsset: (id: string, asset: Partial<Asset>) => Promise<{ success: boolean; error?: string }>;
   deleteAsset: (id: string) => Promise<{ success: boolean; error?: string }>;
   
+  // Permissions & Roles
+  currentUserRole: 'admin' | 'contributor' | 'viewer';
+  updateMemberRole: (memberId: string, role: 'admin' | 'contributor' | 'viewer') => Promise<{ success: boolean; error?: string }>;
+
   // Helpers
   resetAllData: () => Promise<void>;
+  importBackupData: (backupJson: any) => Promise<{ success: boolean; error?: string }>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -149,8 +154,23 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Members
       let members: Profile[] = [];
       if (currentActive) {
+        const storedRoles = localStorage.getItem('moneymate_demo_member_roles');
+        const rolesMap = storedRoles ? JSON.parse(storedRoles) : {};
+        if (!rolesMap[user.id]) rolesMap[user.id] = 'admin';
+        if (!rolesMap['demo-partner-456']) rolesMap['demo-partner-456'] = 'contributor';
+        
+        const perspectiveRole = localStorage.getItem('moneymate_demo_perspective_role') || 'admin';
+        
         members = [
-          { id: user.id, email: user.email, currency: user.currency, theme: user.theme, lang: user.lang, active_workspace_id: currentActive.id }
+          { 
+            id: user.id, 
+            email: user.email, 
+            currency: user.currency, 
+            theme: user.theme, 
+            lang: user.lang, 
+            active_workspace_id: currentActive.id,
+            role: perspectiveRole as 'admin' | 'contributor' | 'viewer'
+          }
         ];
         // Buse (demo partner) should ONLY be in the family budget workspace!
         if (currentActive.id === 'demo-workspace-family') {
@@ -160,7 +180,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             currency: 'TRY', 
             theme: 'system', 
             lang: 'tr', 
-            active_workspace_id: currentActive.id 
+            active_workspace_id: currentActive.id,
+            role: rolesMap['demo-partner-456'] || 'contributor'
           });
         }
       }
@@ -273,7 +294,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       let storedAssets = localStorage.getItem('moneymate_demo_assets');
       let currentAssets = storedAssets ? JSON.parse(storedAssets) : generateDemoAssets(user.id);
-      let filteredAssets = currentAssets.filter((a: any) => currentActive ? a.workspace_id === currentActive.id : !a.workspace_id);
+      let filteredAssets = currentAssets.filter((a: any) => 
+        currentActive 
+          ? (a.workspace_id === currentActive.id || (!a.workspace_id && a.user_id === user.id))
+          : (!a.workspace_id && a.user_id === user.id)
+      );
       setAssets(filteredAssets);
 
       await processCatchUp(filteredRts, filteredTxs, true);
@@ -300,7 +325,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (currentActive) {
           const { data: memberProfiles, error: membersErr } = await supabase
             .from('workspace_members')
-            .select('user_id')
+            .select('user_id, role')
             .eq('workspace_id', currentActive.id);
           
           if (membersErr) throw membersErr;
@@ -311,7 +336,27 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .select('*')
             .in('id', memberIds);
 
-          setWorkspaceMembers(profilesData || []);
+          const membersWithRoles = (profilesData || []).map((p: any) => {
+            const membership = memberProfiles?.find(m => m.user_id === p.id);
+            let codeRole: 'admin' | 'contributor' | 'viewer' = 'contributor';
+            if (membership?.role === 'owner') {
+              codeRole = 'admin';
+            } else {
+              const storedViewerOverrides = localStorage.getItem(`moneymate_viewer_overrides_${currentActive.id}`);
+              const overrides = storedViewerOverrides ? JSON.parse(storedViewerOverrides) : {};
+              if (overrides[p.id] === 'viewer') {
+                codeRole = 'viewer';
+              } else {
+                codeRole = 'contributor';
+              }
+            }
+            return {
+              ...p,
+              role: codeRole
+            };
+          });
+
+          setWorkspaceMembers(membersWithRoles);
         } else {
           setWorkspaceMembers([]);
         }
@@ -411,7 +456,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Fetch Assets
         let assetQuery = supabase.from('assets').select('*');
         if (currentActive) {
-          assetQuery = assetQuery.eq('workspace_id', currentActive.id);
+          assetQuery = assetQuery.or(`workspace_id.eq.${currentActive.id},and(workspace_id.is.null,user_id.eq.${user.id})`);
         } else {
           assetQuery = assetQuery.eq('user_id', user.id).is('workspace_id', null);
         }
@@ -1538,7 +1583,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...asset,
       id: isDemo ? `ast-${Date.now()}` : '',
       user_id: user.id,
-      workspace_id: activeWorkspace?.id || null,
+      workspace_id: asset.workspace_id !== undefined ? asset.workspace_id : (activeWorkspace?.id || null),
       created_at: new Date().toISOString(),
     };
 
@@ -1560,7 +1605,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             quantity: newAsset.quantity,
             purchase_price: newAsset.purchase_price,
             user_id: user.id,
-            workspace_id: activeWorkspace?.id || null,
+            workspace_id: newAsset.workspace_id,
           })
           .select()
           .single();
@@ -1585,15 +1630,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (isSupabaseConfigured && supabase) {
       try {
+        const updateData: any = {
+          name: updatedFields.name,
+          type: updatedFields.type,
+          value: updatedFields.value,
+          quantity: updatedFields.quantity,
+          purchase_price: updatedFields.purchase_price,
+        };
+        if (updatedFields.workspace_id !== undefined) {
+          updateData.workspace_id = updatedFields.workspace_id;
+        }
+
         const { data, error } = await supabase
           .from('assets')
-          .update({
-            name: updatedFields.name,
-            type: updatedFields.type,
-            value: updatedFields.value,
-            quantity: updatedFields.quantity,
-            purchase_price: updatedFields.purchase_price,
-          })
+          .update(updateData)
           .eq('id', id)
           .select()
           .single();
@@ -1645,6 +1695,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('moneymate_demo_debts');
       localStorage.removeItem('moneymate_demo_subscriptions');
       localStorage.removeItem('moneymate_demo_assets');
+      localStorage.removeItem('moneymate_demo_perspective_role');
+      localStorage.removeItem('moneymate_demo_member_roles');
       
       // Reload demo data defaults
       const demoTxs = generateDemoTransactions(user.id);
@@ -1711,9 +1763,207 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // ==========================================
-  // WORKSPACE COLLABORATION METHODS
-  // ==========================================
+  const importBackupData = async (backupJson: any): Promise<{ success: boolean; error?: string }> => {
+    if (!user) return { success: false, error: 'Oturum açılmadı.' };
+    
+    // Basic structural validation
+    if (!backupJson || typeof backupJson !== 'object') {
+      return { success: false, error: 'Geçersiz yedek dosyası formatı.' };
+    }
+    
+    const data = backupJson.data;
+    if (!data || typeof data !== 'object') {
+      return { success: false, error: 'Yedek dosyası veri (data) bloğu içermiyor.' };
+    }
+
+    // Default arrays if missing
+    const importedTxs = Array.isArray(data.transactions) ? data.transactions : [];
+    const importedCats = Array.isArray(data.categories) ? data.categories : [];
+    const importedBudgets = Array.isArray(data.budgets) ? data.budgets : [];
+    const importedRts = Array.isArray(data.recurringTransactions) ? data.recurringTransactions : [];
+    const importedGoals = Array.isArray(data.goals) ? data.goals : [];
+    const importedDebts = Array.isArray(data.debts) ? data.debts : [];
+    const importedSubs = Array.isArray(data.subscriptions) ? data.subscriptions : [];
+    const importedAssets = Array.isArray(data.assets) ? data.assets : [];
+
+    // Map user_id for all imported items
+    const cleanTxs = importedTxs.map((t: any) => ({ ...t, user_id: user.id }));
+    const cleanCats = importedCats.map((c: any) => ({
+      ...c,
+      user_id: c.is_default ? null : user.id
+    }));
+    const cleanBudgets = importedBudgets.map((b: any) => ({ ...b, user_id: user.id }));
+    const cleanRts = importedRts.map((r: any) => ({ ...r, user_id: user.id }));
+    const cleanGoals = importedGoals.map((g: any) => ({ ...g, user_id: user.id }));
+    const cleanDebts = importedDebts.map((d: any) => ({ ...d, user_id: user.id }));
+    const cleanSubs = importedSubs.map((s: any) => ({ ...s, user_id: user.id }));
+    const cleanAssets = importedAssets.map((a: any) => ({ ...a, user_id: user.id }));
+
+    if (isDemo) {
+      // 1. Save to LocalStorage
+      localStorage.setItem('moneymate_demo_transactions', JSON.stringify(cleanTxs));
+      localStorage.setItem('moneymate_demo_categories', JSON.stringify(cleanCats.length > 0 ? cleanCats : DEFAULT_CATEGORIES));
+      localStorage.setItem('moneymate_demo_budgets', JSON.stringify(cleanBudgets));
+      localStorage.setItem('moneymate_demo_recurring', JSON.stringify(cleanRts));
+      localStorage.setItem('moneymate_demo_goals', JSON.stringify(cleanGoals));
+      localStorage.setItem('moneymate_demo_debts', JSON.stringify(cleanDebts));
+      localStorage.setItem('moneymate_demo_subscriptions', JSON.stringify(cleanSubs));
+      localStorage.setItem('moneymate_demo_assets', JSON.stringify(cleanAssets));
+
+      // 2. Set Context States
+      setTransactions(cleanTxs);
+      setCategories(cleanCats.length > 0 ? cleanCats : DEFAULT_CATEGORIES);
+      setBudgets(cleanBudgets);
+      setRecurringTransactions(cleanRts);
+      setGoals(cleanGoals);
+      setDebts(cleanDebts);
+      setSubscriptions(cleanSubs);
+      setAssets(cleanAssets);
+
+      return { success: true };
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        // Step 1: Wipe existing records
+        await supabase.from('transactions').delete().eq('user_id', user.id);
+        await supabase.from('budgets').delete().eq('user_id', user.id);
+        await supabase.from('recurring_transactions').delete().eq('user_id', user.id);
+        await supabase.from('goals').delete().eq('user_id', user.id);
+        await supabase.from('debts').delete().eq('user_id', user.id);
+        await supabase.from('subscriptions').delete().eq('user_id', user.id);
+        await supabase.from('assets').delete().eq('user_id', user.id);
+        // Wipe custom categories only
+        await supabase.from('categories').delete().eq('user_id', user.id);
+
+        // Step 2: Bulk Insert Custom Categories first
+        const customCatsToInsert = cleanCats.filter((c: any) => !c.is_default);
+        if (customCatsToInsert.length > 0) {
+          const { error: catErr } = await supabase.from('categories').insert(customCatsToInsert);
+          if (catErr) throw catErr;
+        }
+
+        // Step 3: Insert other tables in parallel
+        const insertPromises = [];
+        
+        if (cleanTxs.length > 0) {
+          insertPromises.push(supabase.from('transactions').insert(cleanTxs));
+        }
+        if (cleanBudgets.length > 0) {
+          insertPromises.push(supabase.from('budgets').insert(cleanBudgets));
+        }
+        if (cleanRts.length > 0) {
+          insertPromises.push(supabase.from('recurring_transactions').insert(cleanRts));
+        }
+        if (cleanGoals.length > 0) {
+          insertPromises.push(supabase.from('goals').insert(cleanGoals));
+        }
+        if (cleanDebts.length > 0) {
+          insertPromises.push(supabase.from('debts').insert(cleanDebts));
+        }
+        if (cleanSubs.length > 0) {
+          insertPromises.push(supabase.from('subscriptions').insert(cleanSubs));
+        }
+        if (cleanAssets.length > 0) {
+          insertPromises.push(supabase.from('assets').insert(cleanAssets));
+        }
+
+        const results = await Promise.all(insertPromises);
+        const firstError = results.find(r => r.error);
+        if (firstError) {
+          throw firstError.error;
+        }
+
+        // Refetch to sync context state
+        await fetchData(true);
+        return { success: true };
+      } catch (e: any) {
+        console.error("Error restoring Supabase backup", e);
+        return { success: false, error: e.message || 'Bulut verisi geri yüklenirken bir hata oluştu.' };
+      }
+    }
+
+    return { success: false, error: 'Geri yükleme işlemi başarısız oldu.' };
+  };
+
+  // Perspective role for demo mode testing
+  const [demoPerspectiveRole, setDemoPerspectiveRole] = useState<'admin' | 'contributor' | 'viewer'>(() => {
+    const stored = localStorage.getItem('moneymate_demo_perspective_role');
+    return (stored as 'admin' | 'contributor' | 'viewer') || 'admin';
+  });
+
+  const currentUserRole = React.useMemo(() => {
+    if (!activeWorkspace) return 'admin';
+    if (isDemo) {
+      return demoPerspectiveRole;
+    }
+    const currentMe = workspaceMembers.find(m => m.id === user?.id);
+    const role = currentMe?.role;
+    return (role === 'contributor' || role === 'viewer') ? role : 'admin';
+  }, [activeWorkspace, isDemo, demoPerspectiveRole, workspaceMembers, user?.id]);
+
+  const updateMemberRole = async (memberId: string, role: 'admin' | 'contributor' | 'viewer') => {
+    if (!activeWorkspace) return { success: false, error: 'Aktif çalışma alanı yok.' };
+
+    if (isDemo) {
+      if (memberId === user?.id) {
+        setDemoPerspectiveRole(role);
+        localStorage.setItem('moneymate_demo_perspective_role', role);
+        setWorkspaceMembers(prev => prev.map(m => m.id === memberId ? { ...m, role } : m));
+        return { success: true };
+      } else {
+        const storedRoles = localStorage.getItem('moneymate_demo_member_roles');
+        const rolesMap = storedRoles ? JSON.parse(storedRoles) : {};
+        rolesMap[memberId] = role;
+        localStorage.setItem('moneymate_demo_member_roles', JSON.stringify(rolesMap));
+        setWorkspaceMembers(prev => prev.map(m => m.id === memberId ? { ...m, role } : m));
+        return { success: true };
+      }
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        if (memberId === user?.id) {
+          return { success: false, error: 'Kendi yetkinizi değiştiremezsiniz.' };
+        }
+        
+        const currentMe = workspaceMembers.find(m => m.id === user?.id);
+        if (currentMe?.role !== 'admin') {
+          return { success: false, error: 'Yalnızca yöneticiler rol değiştirebilir.' };
+        }
+
+        let dbRole: 'owner' | 'member' = 'member';
+        if (role === 'admin') {
+          dbRole = 'owner';
+        }
+
+        const { error } = await supabase
+          .from('workspace_members')
+          .update({ role: dbRole })
+          .eq('workspace_id', activeWorkspace.id)
+          .eq('user_id', memberId);
+
+        if (error) throw error;
+
+        const storedViewerOverrides = localStorage.getItem(`moneymate_viewer_overrides_${activeWorkspace.id}`);
+        const overrides = storedViewerOverrides ? JSON.parse(storedViewerOverrides) : {};
+        
+        if (role === 'viewer') {
+          overrides[memberId] = 'viewer';
+        } else {
+          delete overrides[memberId];
+        }
+        localStorage.setItem(`moneymate_viewer_overrides_${activeWorkspace.id}`, JSON.stringify(overrides));
+
+        await fetchData(true);
+        return { success: true };
+      } catch (e: any) {
+        return { success: false, error: e.message || 'Rol güncellenirken hata oluştu.' };
+      }
+    }
+
+    return { success: false, error: 'Sunucu hatası.' };
+  };
 
   const setActiveWorkspace = async (workspaceId: string | null) => {
     const { success, error } = await updateProfile({ active_workspace_id: workspaceId });
@@ -1872,6 +2122,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         workspaces,
         activeWorkspace,
         workspaceMembers,
+        currentUserRole,
+        updateMemberRole,
         createWorkspace,
         joinWorkspace,
         leaveWorkspace,
@@ -1908,6 +2160,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateAsset,
         deleteAsset,
         resetAllData,
+        importBackupData,
       }}
     >
       {children}

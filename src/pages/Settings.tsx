@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Settings as SettingsIcon, Shield, Trash2, Moon, Sun, DollarSign, Brain, RefreshCw, Briefcase } from 'lucide-react';
+import { Settings as SettingsIcon, Shield, Trash2, Moon, Sun, DollarSign, Brain, RefreshCw, Briefcase, X, Zap, Clock, Database, Download, Upload, CheckCircle2, AlertTriangle, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { ConfirmModal } from '../components/common/ConfirmModal';
 import { formatCurrency } from '../utils/formatters';
 import { CustomSelect } from '../components/common/CustomSelect';
+import { usePWA } from '../utils/pwaStore';
 
 const translations = {
   tr: {
@@ -56,7 +57,48 @@ const translations = {
       'cat-expense-eglence': 'Eğlence ve Kültür',
       'cat-expense-fatura': 'Faturalar',
       'default': 'Değişken Giderler'
-    } as Record<string, string>
+    } as Record<string, string>,
+    ratesRefreshLabel: 'Döviz Kuru Güncelleme Sıklığı',
+    ratesRefreshDesc: 'Döviz kurlarının ne sıklıkla güncelleneceğini belirleyin. Günlük önizlek, sayfa geçişlerini hızlandırır ve mobil veri tüketimini azaltır.',
+    realtime: 'Gerçek Zamanlı',
+    realtimeDesc: 'Her sayfa açılışında en taze kur çekilir.',
+    daily: 'Günlük Önizlek',
+    dailyDesc: 'Kurlar 24 saat önbelleğe alınır. (Önerilen)',
+    manual: 'Manuel',
+    manualDesc: 'Yalnızca yenile butonuna basıldığında kur çekilir.',
+    ratesRefreshSuccess: 'Döviz kuru güncelleme tercihi başarıyla güncellendi.',
+    budgetAlertPrefsTitle: 'Bütçe Eşik Ayarları & Bildirimleri',
+    budgetAlertPrefsDesc: 'Kategorik bütçelerinizin doluluk oranına göre uyarılmak istediğiniz akıllı eşikleri belirleyin. Bu eşiklere yaklaşıldığında görsel alarm ve AI Coach tavsiyeleri devreye girer.',
+    warningThresholdLabel: 'Bütçe Uyarı Eşiği (Warning)',
+    criticalThresholdLabel: 'Kritik Aşım Eşiği (Critical)',
+    blockThresholdLabel: 'Limit Bloke/Aşım Eşiği (Overdraft)',
+    thresholdValueText: '%{val} Doluluk',
+    budgetThresholdsUpdated: 'Bütçe uyarı eşikleri başarıyla güncellendi.',
+    dataPortabilityTitle: 'Veri Taşınabilirliği & Yedekleme',
+    dataPortabilityDesc: 'Finansal özgürlüğün temeli veri sahipliğidir. MoneyMate verilerinizi Excel uyumlu CSV formatında dışarı aktarabilir veya JSON formatında tam yedek alıp geri yükleyebilirsiniz.',
+    exportCsvTitle: 'Excel / CSV Tabloları',
+    exportCsvDesc: 'Verilerinizi kategorize edilmiş temiz tablolar halinde tek tıkla Excel veya Sheets için indirin.',
+    exportTxs: 'İşlemler (CSV)',
+    exportBudgets: 'Bütçe Limitleri (CSV)',
+    exportGoals: 'Birikim Hedefleri (CSV)',
+    exportDebts: 'Borç & Alacaklar (CSV)',
+    exportAssets: 'Varlıklar (CSV)',
+    recordsText: '{count} kayıt',
+    backupTitle: 'JSON Tam Sistem Yedeği (Backup)',
+    backupDesc: 'Tüm bütçe, işlem, varlık ve ayarlarınızı içeren tek bir yedekleme dosyası (.json) indirir. Bu dosya ile verilerinizi başka cihazlara anında taşıyabilirsiniz.',
+    downloadBackupBtn: 'Tam Sistem Yedeğini İndir (.json)',
+    restoreTitle: 'Yedekten Geri Yükle (Restore)',
+    restoreDesc: 'Daha önce aldığınız bir MoneyMate yedek dosyasını (.json) yükleyerek verilerinizi anında geri getirin.',
+    restoreDropzone: 'Dosyayı buraya sürükleyin veya seçmek için tıklayın',
+    restoreSelectFile: 'Yedekleme Dosyası Seç (.json)',
+    restoreSuccess: 'Verileriniz başarıyla geri yüklendi! Sistem güncellendi.',
+    restoreError: 'Geri yükleme başarısız: ',
+    importReportTitle: 'Yedek Dosyası Analiz Raporu',
+    importReportWarning: 'DİKKAT: Geri yükleme işlemi onaylandığında, mevcut tüm verileriniz silinecek ve yedek dosyasındaki veriler yazılacaktır. Bu işlem geri alınamaz.',
+    importConfirmBtn: 'Analizi Onayla ve Geri Yükle',
+    importCancelBtn: 'İptal Et',
+    importStats: 'Dosya İçeriği:',
+    importSummaryText: 'Yedekleme dosyası başarıyla doğrulandı. İçerik özeti aşağıdadır:'
   },
   en: {
     title: 'System Settings',
@@ -107,13 +149,65 @@ const translations = {
       'cat-expense-eglence': 'Entertainment & Culture',
       'cat-expense-fatura': 'Bills',
       'default': 'Variable Expenses'
-    } as Record<string, string>
+    } as Record<string, string>,
+    ratesRefreshLabel: 'Exchange Rates Refresh Interval',
+    ratesRefreshDesc: 'Define how frequently currency exchange rates are refreshed. Daily caching speeds up page navigation and reduces data usage.',
+    realtime: 'Real-time',
+    realtimeDesc: 'Fetches the freshest rate on every page load.',
+    daily: 'Daily Cache',
+    dailyDesc: 'Rates cached for 24 hours. (Recommended)',
+    manual: 'Manual',
+    manualDesc: 'Rates only fetch when you click the refresh button.',
+    ratesRefreshSuccess: 'Exchange rates refresh preference updated successfully.',
+    budgetAlertPrefsTitle: 'Budget Alert Thresholds & Notifications',
+    budgetAlertPrefsDesc: 'Define smart thresholds to be warned as categorical budgets fill up. Visual alerts and AI Coach advice activate when approaching these targets.',
+    warningThresholdLabel: 'Budget Warning Threshold',
+    criticalThresholdLabel: 'Critical Budget Threshold',
+    blockThresholdLabel: 'Overdraft Threshold',
+    thresholdValueText: '%{val} Capacity',
+    budgetThresholdsUpdated: 'Budget warning thresholds updated successfully.',
+    dataPortabilityTitle: 'Data Portability & Backup',
+    dataPortabilityDesc: 'Financial freedom is built on data ownership. Export your MoneyMate data as Excel-compatible CSV tables, or download/restore a full system backup in JSON format.',
+    exportCsvTitle: 'Excel / CSV Tables',
+    exportCsvDesc: 'Download your financial data as clean, categorized tables optimized for Excel or Google Sheets.',
+    exportTxs: 'Transactions (CSV)',
+    exportBudgets: 'Budgets (CSV)',
+    exportGoals: 'Savings Goals (CSV)',
+    exportDebts: 'Debts & Receivables (CSV)',
+    exportAssets: 'Assets (CSV)',
+    recordsText: '{count} records',
+    backupTitle: 'Full System JSON Backup',
+    backupDesc: 'Downloads a single backup file (.json) containing all your transactions, budgets, goals, assets, and settings. Use this file to migrate data to another device.',
+    downloadBackupBtn: 'Download Full Backup (.json)',
+    restoreTitle: 'Restore from Backup',
+    restoreDesc: 'Upload a previously exported MoneyMate backup file (.json) to instantly restore your data.',
+    restoreDropzone: 'Drag and drop file here or click to select',
+    restoreSelectFile: 'Select Backup File (.json)',
+    restoreSuccess: 'Data restored successfully! System updated.',
+    restoreError: 'Restore failed: ',
+    importReportTitle: 'Backup Pre-Import Report',
+    importReportWarning: 'WARNING: Confirming this restore will permanently overwrite and replace your current financial data. This action cannot be undone.',
+    importConfirmBtn: 'Confirm & Restore Backup',
+    importCancelBtn: 'Cancel',
+    importStats: 'File Content:',
+    importSummaryText: 'Backup file verified successfully. Summary of items found:'
   }
 };
 
 export const Settings: React.FC = () => {
   const { user, updateProfile, isDemo } = useAuth();
-  const { transactions, resetAllData } = useData();
+  const { 
+    transactions, 
+    categories, 
+    budgets, 
+    recurringTransactions, 
+    goals, 
+    debts, 
+    subscriptions, 
+    assets, 
+    resetAllData, 
+    importBackupData 
+  } = useData();
   const currency = user?.currency || 'TRY';
   const lang = user?.lang || 'tr';
   const t = translations[lang];
@@ -121,46 +215,45 @@ export const Settings: React.FC = () => {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   
-  // PWA Install Prompt State
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [isAppInstalled, setIsAppInstalled] = useState(false);
+  const [fullName, setFullName] = useState(user?.full_name || '');
 
   React.useEffect(() => {
-    // Check if running in standalone mode
-    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
-      setIsAppInstalled(true);
+    if (user?.full_name) {
+      setFullName(user.full_name);
     }
+  }, [user?.full_name]);
 
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-
-    const handleAppInstalled = () => {
-      setIsAppInstalled(true);
-      setDeferredPrompt(null);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    window.addEventListener('appinstalled', handleAppInstalled);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
-    };
-  }, []);
-
-  const handleInstallApp = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`PWA install choice: ${outcome}`);
-    setDeferredPrompt(null);
+  const handleFullNameBlur = async () => {
+    const trimmed = fullName.trim();
+    if (trimmed && trimmed !== user?.full_name) {
+      const res = await updateProfile({ full_name: trimmed });
+      if (res.success) {
+        setSuccessMsg(lang === 'tr' ? 'Profil ismi başarıyla güncellendi.' : 'Profile name updated successfully.');
+        setTimeout(() => setSuccessMsg(''), 3000);
+      }
+    }
   };
+  
+  // PWA Install Hook Entegrasyonu
+  const { isInstallable, isInstalled: isAppInstalled, install: handleInstallApp } = usePWA();
+  const [showIosGuide, setShowIosGuide] = useState(false);
+
+  const isIOS = typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
   
   // AI Coach state
   const [showAiReport, setShowAiReport] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+
+  const [ratesRefresh, setRatesRefresh] = useState(() => {
+    return localStorage.getItem('moneymate_rates_refresh') || 'daily';
+  });
+
+  const handleRatesRefreshChange = (val: 'realtime' | 'daily' | 'manual') => {
+    setRatesRefresh(val);
+    localStorage.setItem('moneymate_rates_refresh', val);
+    setSuccessMsg(lang === 'tr' ? translations.tr.ratesRefreshSuccess : translations.en.ratesRefreshSuccess);
+    setTimeout(() => setSuccessMsg(''), 3000);
+  };
 
   const [savingsTarget, setSavingsTarget] = useState(() => {
     const stored = localStorage.getItem('moneymate_savings_target');
@@ -175,6 +268,45 @@ export const Settings: React.FC = () => {
     setTimeout(() => setSuccessMsg(''), 3000);
   };
 
+  const [warningThreshold, setWarningThreshold] = useState(() => {
+    const stored = localStorage.getItem('moneymate_budget_warning_threshold');
+    return stored ? parseInt(stored) : 50;
+  });
+
+  const [criticalThreshold, setCriticalThreshold] = useState(() => {
+    const stored = localStorage.getItem('moneymate_budget_critical_threshold');
+    return stored ? parseInt(stored) : 80;
+  });
+
+  const [blockThreshold, setBlockThreshold] = useState(() => {
+    const stored = localStorage.getItem('moneymate_budget_block_threshold');
+    return stored ? parseInt(stored) : 100;
+  });
+
+  const handleWarningThresholdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value);
+    setWarningThreshold(value);
+    localStorage.setItem('moneymate_budget_warning_threshold', String(value));
+    setSuccessMsg(lang === 'tr' ? translations.tr.budgetThresholdsUpdated : translations.en.budgetThresholdsUpdated);
+    setTimeout(() => setSuccessMsg(''), 3000);
+  };
+
+  const handleCriticalThresholdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value);
+    setCriticalThreshold(value);
+    localStorage.setItem('moneymate_budget_critical_threshold', String(value));
+    setSuccessMsg(lang === 'tr' ? translations.tr.budgetThresholdsUpdated : translations.en.budgetThresholdsUpdated);
+    setTimeout(() => setSuccessMsg(''), 3000);
+  };
+
+  const handleBlockThresholdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value);
+    setBlockThreshold(value);
+    localStorage.setItem('moneymate_budget_block_threshold', String(value));
+    setSuccessMsg(lang === 'tr' ? translations.tr.budgetThresholdsUpdated : translations.en.budgetThresholdsUpdated);
+    setTimeout(() => setSuccessMsg(''), 3000);
+  };
+
   const [portfolioCurrency, setPortfolioCurrency] = useState(() => {
     return localStorage.getItem('moneymate_portfolio_currency') || user?.currency || 'TRY';
   });
@@ -184,6 +316,207 @@ export const Settings: React.FC = () => {
     localStorage.setItem('moneymate_portfolio_currency', val);
     setSuccessMsg(lang === 'tr' ? 'Portföy değerleme para birimi güncellendi.' : 'Portfolio valuation currency updated.');
     setTimeout(() => setSuccessMsg(''), 3000);
+  };
+
+  // --- DATA PORTABILITY & BACKUP HANDLERS ---
+  const [importingFile, setImportingFile] = useState<any>(null);
+  const [importSummary, setImportSummary] = useState<any>(null);
+  const [importError, setImportError] = useState('');
+  const [portabilityLoading, setPortabilityLoading] = useState(false);
+
+  const convertToCSV = (arr: any[], headers: string[], mapper: (item: any) => any[]) => {
+    const csvRows = [];
+    csvRows.push('\uFEFF' + headers.join(',')); // Add UTF-8 BOM
+    for (const item of arr) {
+      const values = mapper(item);
+      const escaped = values.map(val => {
+        if (val === undefined || val === null) return '';
+        const str = String(val);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      });
+      csvRows.push(escaped.join(','));
+    }
+    return csvRows.join('\n');
+  };
+
+  const downloadCSVFile = (csvContent: string, fileName: string) => {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', fileName);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportTransactions = () => {
+    const headers = lang === 'tr' 
+      ? ["Tarih", "Tür", "Kategori", "Açıklama", "Tutar", "Ödeme Yöntemi"]
+      : ["Date", "Type", "Category", "Description", "Amount", "Payment Method"];
+    const csv = convertToCSV(transactions, headers, (t) => [
+      t.transaction_date,
+      t.type === 'income' ? (lang === 'tr' ? 'Gelir' : 'Income') : (lang === 'tr' ? 'Gider' : 'Expense'),
+      categories.find(c => c.id === t.category_id)?.name || (lang === 'tr' ? 'Diğer' : 'Other'),
+      t.description || '',
+      t.amount,
+      t.payment_method || ''
+    ]);
+    downloadCSVFile(csv, `moneymate_transactions_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const handleExportBudgets = () => {
+    const headers = lang === 'tr'
+      ? ["Ay", "Kategori", "Bütçe Limiti"]
+      : ["Month", "Category", "Budget Limit"];
+    const csv = convertToCSV(budgets, headers, (b) => [
+      b.month,
+      categories.find(c => c.id === b.category_id)?.name || (lang === 'tr' ? 'Diğer' : 'Other'),
+      b.limit_amount
+    ]);
+    downloadCSVFile(csv, `moneymate_budgets_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const handleExportGoals = () => {
+    const headers = lang === 'tr'
+      ? ["Hedef Adı", "Hedef Tutar", "Mevcut Birikim", "Hedef Tarih"]
+      : ["Goal Name", "Target Amount", "Current Amount", "Target Date"];
+    const csv = convertToCSV(goals, headers, (g) => [
+      g.name,
+      g.target_amount,
+      g.current_amount,
+      g.target_date || ''
+    ]);
+    downloadCSVFile(csv, `moneymate_goals_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const handleExportDebts = () => {
+    const headers = lang === 'tr'
+      ? ["Kişi/Kurum", "Tür", "Tutar", "Vade Tarihi", "Ödeme Durumu", "Açıklama"]
+      : ["Contact", "Type", "Amount", "Due Date", "Status", "Description"];
+    const csv = convertToCSV(debts, headers, (d) => [
+      d.title,
+      d.type === 'debt' ? (lang === 'tr' ? 'Borç' : 'Debt') : (lang === 'tr' ? 'Alacak' : 'Receivable'),
+      d.amount,
+      d.due_date || '',
+      d.is_paid ? (lang === 'tr' ? 'Ödendi' : 'Paid') : (lang === 'tr' ? 'Ödenmedi' : 'Unpaid'),
+      d.description || ''
+    ]);
+    downloadCSVFile(csv, `moneymate_debts_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const handleExportAssets = () => {
+    const headers = lang === 'tr'
+      ? ["Varlık Adı", "Tür", "Güncel Değer", "Miktar", "Alış Fiyatı"]
+      : ["Asset Name", "Type", "Current Value", "Quantity", "Purchase Price"];
+    const csv = convertToCSV(assets, headers, (a) => [
+      a.name,
+      a.type,
+      a.value,
+      a.quantity || 1,
+      a.purchase_price || a.value
+    ]);
+    downloadCSVFile(csv, `moneymate_assets_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const handleExportJSON = () => {
+    const backupObject = {
+      app: 'MoneyMate',
+      version: '1.0',
+      exported_at: new Date().toISOString(),
+      data: {
+        transactions,
+        categories,
+        budgets,
+        recurringTransactions,
+        goals,
+        debts,
+        subscriptions,
+        assets
+      }
+    };
+    const blob = new Blob([JSON.stringify(backupObject, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const dateStr = new Date().toISOString().split('T')[0];
+    link.setAttribute('href', url);
+    link.setAttribute('download', `moneymate_backup_${dateStr}.json`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const readAndValidateBackupFile = (file: File) => {
+    setImportError('');
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const content = event.target?.result as string;
+        const parsed = JSON.parse(content);
+        
+        if (!parsed || typeof parsed !== 'object' || !parsed.data || typeof parsed.data !== 'object') {
+          setImportError(lang === 'tr' ? 'Geçersiz yedekleme dosyası yapısı.' : 'Invalid backup file structure.');
+          return;
+        }
+
+        const d = parsed.data;
+        const summary = {
+          transactions: Array.isArray(d.transactions) ? d.transactions.length : 0,
+          categories: Array.isArray(d.categories) ? d.categories.length : 0,
+          budgets: Array.isArray(d.budgets) ? d.budgets.length : 0,
+          recurringTransactions: Array.isArray(d.recurringTransactions) ? d.recurringTransactions.length : 0,
+          goals: Array.isArray(d.goals) ? d.goals.length : 0,
+          debts: Array.isArray(d.debts) ? d.debts.length : 0,
+          subscriptions: Array.isArray(d.subscriptions) ? d.subscriptions.length : 0,
+          assets: Array.isArray(d.assets) ? d.assets.length : 0
+        };
+
+        setImportSummary(summary);
+        setImportingFile(parsed);
+      } catch (err) {
+        setImportError(lang === 'tr' ? 'Dosya okunurken hata oluştu. Lütfen geçerli bir JSON dosyası yükleyin.' : 'Error reading file. Please upload a valid JSON file.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    readAndValidateBackupFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    readAndValidateBackupFile(file);
+  };
+
+  const handleConfirmImport = async () => {
+    if (!importingFile) return;
+    
+    setPortabilityLoading(true);
+    const res = await importBackupData(importingFile);
+    setPortabilityLoading(false);
+
+    if (res.success) {
+      setSuccessMsg(t.restoreSuccess);
+      setImportingFile(null);
+      setImportSummary(null);
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } else {
+      setImportError(`${t.restoreError}${res.error}`);
+    }
   };
 
   const [colorTheme, setColorTheme] = useState(() => {
@@ -364,6 +697,26 @@ export const Settings: React.FC = () => {
               <span>{t.generalPrefs}</span>
             </h3>
 
+            {/* Ad Soyad girdisi */}
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
+                {lang === 'tr' ? 'Ad Soyad / Kullanıcı Adı' : 'Full Name / Display Name'}
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <UserIcon size={16} />
+                </span>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  onBlur={handleFullNameBlur}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 pl-10 text-sm transition-all font-semibold"
+                  placeholder={lang === 'tr' ? 'Adınızı girin' : 'Enter your name'}
+                />
+              </div>
+            </div>
+
             {/* Currency select */}
             <div className="space-y-2">
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
@@ -527,6 +880,74 @@ export const Settings: React.FC = () => {
               </div>
             </div>
 
+            {/* Exchange Rates Refresh Control */}
+            <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800/60 animate-in fade-in duration-300">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
+                  {t.ratesRefreshLabel}
+                </label>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 pl-1 leading-relaxed mt-0.5 font-medium">
+                  {t.ratesRefreshDesc}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* 1. Real-time */}
+                <button
+                  onClick={() => handleRatesRefreshChange('realtime')}
+                  className={`py-3.5 px-3 rounded-2xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center relative group overflow-hidden ${
+                    ratesRefresh === 'realtime'
+                      ? 'border-brand-500 bg-brand-500/10 text-brand-600 dark:text-brand-400 shadow-md shadow-brand-500/5'
+                      : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                  }`}
+                >
+                  <div className="flex items-center space-x-1.5 z-10">
+                    <Zap size={14} className={ratesRefresh === 'realtime' ? 'text-amber-500 animate-pulse' : 'text-slate-400 group-hover:text-amber-500 transition-colors'} />
+                    <span>{t.realtime}</span>
+                  </div>
+                  <span className="text-[9px] font-medium leading-normal text-slate-400 dark:text-slate-500 px-1 z-10">
+                    {t.realtimeDesc}
+                  </span>
+                </button>
+
+                {/* 2. Daily Cache */}
+                <button
+                  onClick={() => handleRatesRefreshChange('daily')}
+                  className={`py-3.5 px-3 rounded-2xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center relative group overflow-hidden ${
+                    ratesRefresh === 'daily'
+                      ? 'border-brand-500 bg-brand-500/10 text-brand-600 dark:text-brand-400 shadow-md shadow-brand-500/5'
+                      : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                  }`}
+                >
+                  <div className="flex items-center space-x-1.5 z-10">
+                    <Clock size={14} className={ratesRefresh === 'daily' ? 'text-indigo-500 animate-pulse' : 'text-slate-400 group-hover:text-indigo-500 transition-colors'} />
+                    <span>{t.daily}</span>
+                  </div>
+                  <span className="text-[9px] font-medium leading-normal text-slate-400 dark:text-slate-500 px-1 z-10">
+                    {t.dailyDesc}
+                  </span>
+                </button>
+
+                {/* 3. Manual */}
+                <button
+                  onClick={() => handleRatesRefreshChange('manual')}
+                  className={`py-3.5 px-3 rounded-2xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center relative group overflow-hidden ${
+                    ratesRefresh === 'manual'
+                      ? 'border-brand-500 bg-brand-500/10 text-brand-600 dark:text-brand-400 shadow-md shadow-brand-500/5'
+                      : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                  }`}
+                >
+                  <div className="flex items-center space-x-1.5 z-10">
+                    <RefreshCw size={14} className={ratesRefresh === 'manual' ? 'text-emerald-500 animate-pulse' : 'text-slate-400 group-hover:text-emerald-500 transition-colors'} />
+                    <span>{t.manual}</span>
+                  </div>
+                  <span className="text-[9px] font-medium leading-normal text-slate-400 dark:text-slate-500 px-1 z-10">
+                    {t.manualDesc}
+                  </span>
+                </button>
+              </div>
+            </div>
+
             {/* Savings Target Slider */}
             <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-800/60">
               <div className="flex justify-between items-center pl-1">
@@ -556,6 +977,92 @@ export const Settings: React.FC = () => {
                   ? 'Aylık gelirinizden biriktirmek istediğiniz asgari hedef oranı belirler. Raporlar sayfasındaki finansal analizler ve performans göstergeleri bu hedefe göre dinamik olarak güncellenir.' 
                   : 'Defines the minimum target savings rate from your monthly income. Financial digests and performance metrics in the Reports page are dynamically updated based on this target.'}
               </p>
+            </div>
+
+            {/* Budget Alert Thresholds */}
+            <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800/60 animate-in fade-in duration-300">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
+                  {t.budgetAlertPrefsTitle}
+                </label>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 pl-1 leading-relaxed mt-0.5 font-medium">
+                  {t.budgetAlertPrefsDesc}
+                </p>
+              </div>
+
+              <div className="space-y-3.5">
+                {/* 1. Warning Threshold */}
+                <div className="space-y-1.5 pl-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 flex items-center space-x-1.5">
+                      <span className="w-2 h-2 rounded-full bg-yellow-500" />
+                      <span>{t.warningThresholdLabel}</span>
+                    </span>
+                    <span className="text-[10px] font-black text-yellow-600 dark:text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded-lg">
+                      {t.thresholdValueText.replace('{val}', String(warningThreshold))}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="range"
+                      min="30"
+                      max="70"
+                      step="5"
+                      value={warningThreshold}
+                      onChange={handleWarningThresholdChange}
+                      className="w-full accent-yellow-500 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {/* 2. Critical Threshold */}
+                <div className="space-y-1.5 pl-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 flex items-center space-x-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                      <span>{t.criticalThresholdLabel}</span>
+                    </span>
+                    <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-lg">
+                      {t.thresholdValueText.replace('{val}', String(criticalThreshold))}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="range"
+                      min="75"
+                      max="95"
+                      step="5"
+                      value={criticalThreshold}
+                      onChange={handleCriticalThresholdChange}
+                      className="w-full accent-amber-500 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {/* 3. Block/Overdraft Threshold */}
+                <div className="space-y-1.5 pl-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 flex items-center space-x-1.5">
+                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                      <span>{t.blockThresholdLabel}</span>
+                    </span>
+                    <span className="text-[10px] font-black text-red-600 dark:text-red-400 bg-red-500/10 px-2 py-0.5 rounded-lg">
+                      {t.thresholdValueText.replace('{val}', String(blockThreshold))}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="range"
+                      min="95"
+                      max="120"
+                      step="5"
+                      value={blockThreshold}
+                      onChange={handleBlockThresholdChange}
+                      className="w-full accent-red-500 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
           </div>
@@ -599,6 +1106,262 @@ export const Settings: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* DATA PORTABILITY & BACKUP SECTION */}
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-6">
+            <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center space-x-2 pb-3 border-b border-slate-100 dark:border-slate-800/60">
+              <Database size={18} className="text-brand-500" />
+              <span>{t.dataPortabilityTitle}</span>
+            </h3>
+
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+              {t.dataPortabilityDesc}
+            </p>
+
+            {/* 1. CSV Excel Export Area */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider pl-0.5">
+                📊 {t.exportCsvTitle}
+              </h4>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 pl-0.5 leading-relaxed font-medium">
+                {t.exportCsvDesc}
+              </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {/* Gelir/Gider (CSV) */}
+                <button
+                  onClick={handleExportTransactions}
+                  className="p-3 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800/80 border border-slate-200/60 dark:border-slate-800 rounded-xl text-left flex items-center justify-between transition-all duration-200 group cursor-pointer"
+                >
+                  <div className="flex items-center space-x-3 overflow-hidden">
+                    <span className="text-lg">💸</span>
+                    <div className="leading-tight overflow-hidden text-ellipsis">
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block truncate">
+                        {t.exportTxs}
+                      </span>
+                      <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500">
+                        {t.recordsText.replace('{count}', String(transactions.length))}
+                      </span>
+                    </div>
+                  </div>
+                  <Download size={14} className="text-slate-400 group-hover:text-brand-500 group-hover:scale-110 transition-all shrink-0" />
+                </button>
+
+                {/* Bütçeler (CSV) */}
+                <button
+                  onClick={handleExportBudgets}
+                  className="p-3 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800/80 border border-slate-200/60 dark:border-slate-800 rounded-xl text-left flex items-center justify-between transition-all duration-200 group cursor-pointer"
+                >
+                  <div className="flex items-center space-x-3 overflow-hidden">
+                    <span className="text-lg">🎯</span>
+                    <div className="leading-tight overflow-hidden text-ellipsis">
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block truncate">
+                        {t.exportBudgets}
+                      </span>
+                      <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500">
+                        {t.recordsText.replace('{count}', String(budgets.length))}
+                      </span>
+                    </div>
+                  </div>
+                  <Download size={14} className="text-slate-400 group-hover:text-brand-500 group-hover:scale-110 transition-all shrink-0" />
+                </button>
+
+                {/* Birikim Hedefleri (CSV) */}
+                <button
+                  onClick={handleExportGoals}
+                  className="p-3 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800/80 border border-slate-200/60 dark:border-slate-800 rounded-xl text-left flex items-center justify-between transition-all duration-200 group cursor-pointer"
+                >
+                  <div className="flex items-center space-x-3 overflow-hidden">
+                    <span className="text-lg">📈</span>
+                    <div className="leading-tight overflow-hidden text-ellipsis">
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block truncate">
+                        {t.exportGoals}
+                      </span>
+                      <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500">
+                        {t.recordsText.replace('{count}', String(goals.length))}
+                      </span>
+                    </div>
+                  </div>
+                  <Download size={14} className="text-slate-400 group-hover:text-brand-500 group-hover:scale-110 transition-all shrink-0" />
+                </button>
+
+                {/* Borç/Alacak (CSV) */}
+                <button
+                  onClick={handleExportDebts}
+                  className="p-3 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800/80 border border-slate-200/60 dark:border-slate-800 rounded-xl text-left flex items-center justify-between transition-all duration-200 group cursor-pointer"
+                >
+                  <div className="flex items-center space-x-3 overflow-hidden">
+                    <span className="text-lg">🤝</span>
+                    <div className="leading-tight overflow-hidden text-ellipsis">
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block truncate">
+                        {t.exportDebts}
+                      </span>
+                      <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500">
+                        {t.recordsText.replace('{count}', String(debts.length))}
+                      </span>
+                    </div>
+                  </div>
+                  <Download size={14} className="text-slate-400 group-hover:text-brand-500 group-hover:scale-110 transition-all shrink-0" />
+                </button>
+
+                {/* Varlıklar (CSV) */}
+                <button
+                  onClick={handleExportAssets}
+                  className="p-3 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800/80 border border-slate-200/60 dark:border-slate-800 rounded-xl text-left flex items-center justify-between transition-all duration-200 group cursor-pointer sm:col-span-2"
+                >
+                  <div className="flex items-center space-x-3 overflow-hidden">
+                    <span className="text-lg">💼</span>
+                    <div className="leading-tight overflow-hidden text-ellipsis">
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block truncate">
+                        {t.exportAssets}
+                      </span>
+                      <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500">
+                        {t.recordsText.replace('{count}', String(assets.length))}
+                      </span>
+                    </div>
+                  </div>
+                  <Download size={14} className="text-slate-400 group-hover:text-brand-500 group-hover:scale-110 transition-all shrink-0" />
+                </button>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 dark:border-slate-800/60 pt-5 space-y-4">
+              {/* 2. Full JSON Backup */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider pl-0.5">
+                  💾 {t.backupTitle}
+                </h4>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 pl-0.5 leading-relaxed font-medium">
+                  {isDemo 
+                    ? t.backupDesc 
+                    : (lang === 'tr'
+                        ? 'Tüm verilerinizin bulut dışı fiziki bir kopyasını (.json) indirir. Bulut dışında bağımsız bir arşiv olarak saklamak veya başka bir hesaba aktarmak için kullanabilirsiniz.'
+                        : 'Downloads an offline physical copy (.json) of all your data. Perfect for keeping an independent archive outside the cloud or migrating accounts.')}
+                </p>
+                <button
+                  onClick={handleExportJSON}
+                  className="premium-btn-primary w-full py-2.5 px-4 shadow-md shadow-brand-500/10 flex items-center justify-center space-x-2 text-xs font-bold tracking-wide cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150"
+                >
+                  <Download size={14} />
+                  <span>{t.downloadBackupBtn}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 dark:border-slate-800/60 pt-5 space-y-4">
+              {/* 3. JSON Restore Dropzone */}
+              <div className="space-y-2.5">
+                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider pl-0.5">
+                  📤 {t.restoreTitle}
+                </h4>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 pl-0.5 leading-relaxed font-medium">
+                  {t.restoreDesc}
+                </p>
+
+                {importError && (
+                  <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 text-xs rounded-xl font-semibold animate-in fade-in slide-in-from-top-1 duration-200">
+                    ⚠️ {importError}
+                  </div>
+                )}
+
+                {/* Pre-Import Report View */}
+                {importingFile && importSummary ? (
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800/80 rounded-2xl space-y-3.5 animate-in scale-in duration-200">
+                    <div className="flex items-center space-x-2 pb-2 border-b border-slate-200/60 dark:border-slate-800/60">
+                      <CheckCircle2 size={16} className="text-emerald-500" />
+                      <h5 className="text-xs font-bold text-slate-800 dark:text-white">
+                        {t.importReportTitle}
+                      </h5>
+                    </div>
+
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                      {t.importSummaryText}
+                    </p>
+
+                    {/* Stats List */}
+                    <div className="grid grid-cols-2 gap-2 text-[10px] bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                      <div className="flex justify-between border-b border-slate-50 dark:border-slate-800/30 pb-1">
+                        <span className="text-slate-400 font-semibold">💸 {lang === 'tr' ? 'Harcamalar' : 'Transactions'}</span>
+                        <span className="font-extrabold text-slate-700 dark:text-slate-200">{importSummary.transactions}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 dark:border-slate-800/30 pb-1">
+                        <span className="text-slate-400 font-semibold">🎯 {lang === 'tr' ? 'Bütçeler' : 'Budgets'}</span>
+                        <span className="font-extrabold text-slate-700 dark:text-slate-200">{importSummary.budgets}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 dark:border-slate-800/30 pb-1">
+                        <span className="text-slate-400 font-semibold">📈 {lang === 'tr' ? 'Hedefler' : 'Goals'}</span>
+                        <span className="font-extrabold text-slate-700 dark:text-slate-200">{importSummary.goals}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 dark:border-slate-800/30 pb-1">
+                        <span className="text-slate-400 font-semibold">🤝 {lang === 'tr' ? 'Borçlar' : 'Debts'}</span>
+                        <span className="font-extrabold text-slate-700 dark:text-slate-200">{importSummary.debts}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 dark:border-slate-800/30 pb-1">
+                        <span className="text-slate-400 font-semibold">💼 {lang === 'tr' ? 'Varlıklar' : 'Assets'}</span>
+                        <span className="font-extrabold text-slate-700 dark:text-slate-200">{importSummary.assets}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-50 dark:border-slate-800/30 pb-1">
+                        <span className="text-slate-400 font-semibold">🏷️ {lang === 'tr' ? 'Kategoriler' : 'Categories'}</span>
+                        <span className="font-extrabold text-slate-700 dark:text-slate-200">{importSummary.categories}</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl flex items-start space-x-2 text-[9px] text-amber-700 dark:text-amber-400 leading-normal font-semibold">
+                      <AlertTriangle size={14} className="shrink-0 text-amber-500" />
+                      <p>{t.importReportWarning}</p>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        onClick={handleConfirmImport}
+                        disabled={portabilityLoading}
+                        className="premium-btn-primary flex-1 py-2 shadow-md shadow-brand-500/10 flex items-center justify-center space-x-1.5 text-[10px] font-bold cursor-pointer"
+                      >
+                        {portabilityLoading ? <RefreshCw size={12} className="animate-spin" /> : <Upload size={12} />}
+                        <span>{t.importConfirmBtn}</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setImportingFile(null);
+                          setImportSummary(null);
+                        }}
+                        className="premium-btn-secondary px-3 py-2 text-[10px] font-bold border border-slate-200 dark:border-slate-700 cursor-pointer"
+                      >
+                        {t.importCancelBtn}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  // Uploader Dropzone
+                  <div
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    className="border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-brand-500/50 dark:hover:border-brand-500/50 rounded-2xl p-6 text-center transition-all bg-slate-50/50 dark:bg-slate-900/40 cursor-pointer relative group flex flex-col items-center justify-center space-y-2.5"
+                  >
+                    <input
+                      type="file"
+                      accept=".json"
+                      onChange={handleFileChange}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                    
+                    <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400 group-hover:text-brand-500 group-hover:scale-105 transition-all duration-200">
+                      <Upload size={22} />
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                        {t.restoreDropzone}
+                      </p>
+                      <p className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold uppercase tracking-wider">
+                        {t.restoreSelectFile}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Right column: Safety & Reset */}
@@ -617,8 +1380,8 @@ export const Settings: React.FC = () => {
                   <span className="text-base mt-0.5">✓</span>
                   <div className="text-xs leading-relaxed font-semibold">
                     {lang === 'tr' 
-                      ? 'MoneyMate şu anda telefonunuzda kurulu ve yerel bir mobil uygulama olarak çalışıyor!' 
-                      : 'MoneyMate is currently installed and running as a native mobile app!'}
+                      ? 'MoneyMate şu anda cihazınızda kurulu ve yerel bir mobil uygulama olarak çalışıyor!' 
+                      : 'MoneyMate is currently installed and running as a native app!'}
                   </div>
                 </div>
                 <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-relaxed pl-1 font-medium">
@@ -627,19 +1390,34 @@ export const Settings: React.FC = () => {
                     : 'You can launch the app instantly from your home screen even without an internet connection and track your finances.'}
                 </p>
               </div>
-            ) : deferredPrompt ? (
+            ) : isInstallable ? (
               <div className="space-y-4">
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
                   {lang === 'tr'
-                    ? 'MoneyMate\'i telefonunuza yerel bir uygulama gibi kurarak çok daha hızlı ve çevrimdışı (offline-first) kullanabilirsiniz.'
-                    : 'Install MoneyMate as a native app on your phone for a faster, offline-first experience.'}
+                    ? 'MoneyMate\'i telefonunuza veya bilgisayarınıza yerel bir uygulama gibi kurarak çok daha hızlı ve çevrimdışı (offline-first) kullanabilirsiniz.'
+                    : 'Install MoneyMate as a native app on your phone or PC for a faster, offline-first experience.'}
                 </p>
                 <button
                   onClick={handleInstallApp}
-                  className="premium-btn-primary w-full py-2.5 text-xs shadow-md shadow-brand-500/10 flex items-center justify-center space-x-2 cursor-pointer"
+                  className="premium-btn-primary w-full py-2.5 text-xs shadow-md shadow-brand-500/10 flex items-center justify-center space-x-2 cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all"
                 >
                   <span>📲</span>
-                  <span>{lang === 'tr' ? 'Telefonuma Kur (PWA)' : 'Install on my Phone'}</span>
+                  <span>{lang === 'tr' ? 'Uygulamayı Yükle (PWA)' : 'Install App (PWA)'}</span>
+                </button>
+              </div>
+            ) : isIOS ? (
+              <div className="space-y-4">
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                  {lang === 'tr'
+                    ? 'MoneyMate\'i iPhone veya iPad cihazınıza yerel bir uygulama gibi yüklemek için Safari kurulum rehberimizi inceleyin.'
+                    : 'View our Safari installation guide to install MoneyMate as a native app on your iPhone or iPad.'}
+                </p>
+                <button
+                  onClick={() => setShowIosGuide(true)}
+                  className="premium-btn-primary w-full py-2.5 text-xs bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/10 flex items-center justify-center space-x-2 cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all"
+                >
+                  <span>📲</span>
+                  <span>{lang === 'tr' ? 'iOS Kurulum Rehberi' : 'iOS Installation Guide'}</span>
                 </button>
               </div>
             ) : (
@@ -724,6 +1502,85 @@ export const Settings: React.FC = () => {
         onCancel={() => setIsResetModalOpen(false)}
         isDangerous={true}
       />
+
+      {/* iOS Safari Installation Guide Modal */}
+      {showIosGuide && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-md p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-md w-full shadow-2xl relative animate-scale-in">
+            <button
+              onClick={() => setShowIosGuide(false)}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="text-center pb-4 border-b border-slate-100 dark:border-slate-800/60">
+              <span className="text-3xl">📲</span>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-2">
+                {lang === 'tr' ? 'iOS Cihazınıza Yükleyin' : 'Install MoneyMate on iOS'}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {lang === 'tr' 
+                  ? 'MoneyMate\'i ana ekranınıza eklemek için Safari\'de aşağıdaki adımları takip edin:'
+                  : 'Follow these simple steps in Safari to add to your Home Screen:'}
+              </p>
+            </div>
+
+            <div className="py-5 space-y-4 text-xs text-slate-600 dark:text-slate-300">
+              {/* Step 1 */}
+              <div className="flex items-start space-x-3.5">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-brand-500/10 dark:bg-brand-500/5 text-brand-600 dark:text-brand-400 font-bold shrink-0 text-[10px]">
+                  1
+                </span>
+                <p className="leading-relaxed">
+                  {lang === 'tr' ? (
+                    <>Safari tarayıcısının altındaki araç çubuğunda bulunan <strong>Paylaş</strong> <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-sm mx-0.5">📤</span> butonuna dokunun.</>
+                  ) : (
+                    <>Tap the <strong>Share</strong> button <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-sm mx-0.5">📤</span> in the bottom toolbar of Safari.</>
+                  )}
+                </p>
+              </div>
+
+              {/* Step 2 */}
+              <div className="flex items-start space-x-3.5">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-brand-500/10 dark:bg-brand-500/5 text-brand-600 dark:text-brand-400 font-bold shrink-0 text-[10px]">
+                  2
+                </span>
+                <p className="leading-relaxed">
+                  {lang === 'tr' ? (
+                    <>Açılan menüde aşağı kaydırın ve <strong>Ana Ekrana Ekle</strong> <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-sm mx-0.5">➕</span> seçeneğini seçin.</>
+                  ) : (
+                    <>Scroll down the share menu and select <strong>Add to Home Screen</strong> <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-sm mx-0.5">➕</span>.</>
+                  )}
+                </p>
+              </div>
+
+              {/* Step 3 */}
+              <div className="flex items-start space-x-3.5">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-brand-500/10 dark:bg-brand-500/5 text-brand-600 dark:text-brand-400 font-bold shrink-0 text-[10px]">
+                  3
+                </span>
+                <p className="leading-relaxed">
+                  {lang === 'tr' ? (
+                    <>Sağ üst köşedeki <strong>Ekle</strong> butonuna dokunarak kurulumu tamamlayın.</>
+                  ) : (
+                    <>Tap <strong>Add</strong> in the top-right corner to complete the installation.</>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800/60 text-center">
+              <button
+                onClick={() => setShowIosGuide(false)}
+                className="w-full premium-btn-primary py-2.5 text-xs font-semibold cursor-pointer"
+              >
+                {lang === 'tr' ? 'Anladım' : 'Got it'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

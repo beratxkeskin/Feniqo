@@ -20,16 +20,23 @@ export const BudgetProgress: React.FC<BudgetProgressProps> = ({
   const percentage = calculateBudgetProgress(spent, limit);
   const remaining = limit - spent;
 
-  // Determine colors based on thresholds
+  // Determine colors based on dynamic thresholds
+  const warningThreshold = parseInt(localStorage.getItem('moneymate_budget_warning_threshold') || '50');
+  const criticalThreshold = parseInt(localStorage.getItem('moneymate_budget_critical_threshold') || '80');
+  const blockThreshold = parseInt(localStorage.getItem('moneymate_budget_block_threshold') || '100');
+
   let barColor = 'bg-brand-500';
   let badgeBg = 'bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400';
 
-  if (percentage >= 100) {
+  if (percentage >= blockThreshold) {
     barColor = 'bg-red-500 animate-pulse';
     badgeBg = 'bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/30';
-  } else if (percentage >= 80) {
+  } else if (percentage >= criticalThreshold) {
     barColor = 'bg-amber-500';
     badgeBg = 'bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30';
+  } else if (percentage >= warningThreshold) {
+    barColor = 'bg-yellow-500';
+    badgeBg = 'bg-yellow-50 dark:bg-yellow-950/20 text-yellow-600 dark:text-yellow-500 border border-yellow-100 dark:border-yellow-900/30';
   }
 
   return (
@@ -62,15 +69,20 @@ export const BudgetProgress: React.FC<BudgetProgressProps> = ({
       {/* Status message and remaining amount */}
       {showDetails && (
         <div className="flex items-center justify-between text-xs font-medium pt-0.5">
-          {percentage >= 100 ? (
-            <div className="flex items-center space-x-1 text-red-600 dark:text-red-400">
+          {percentage >= blockThreshold ? (
+            <div className="flex items-center space-x-1 text-red-600 dark:text-red-400 animate-pulse">
               <AlertCircle size={14} className="flex-shrink-0" />
               <span>Bütçe aşıldı! ({formatCurrency(Math.abs(remaining), currency)} fazla)</span>
             </div>
-          ) : percentage >= 80 ? (
+          ) : percentage >= criticalThreshold ? (
             <div className="flex items-center space-x-1 text-amber-600 dark:text-amber-400">
               <AlertCircle size={14} className="flex-shrink-0" />
-              <span>Limit sınıra yakın! ({formatCurrency(remaining, currency)} kaldı)</span>
+              <span>Limit kritik seviyede! ({formatCurrency(remaining, currency)} kaldı)</span>
+            </div>
+          ) : percentage >= warningThreshold ? (
+            <div className="flex items-center space-x-1 text-yellow-600 dark:text-yellow-500">
+              <AlertCircle size={14} className="flex-shrink-0" />
+              <span>Bütçe doluyor! ({formatCurrency(remaining, currency)} kaldı)</span>
             </div>
           ) : (
             <div className="flex items-center space-x-1 text-emerald-600 dark:text-emerald-400">
@@ -79,7 +91,7 @@ export const BudgetProgress: React.FC<BudgetProgressProps> = ({
             </div>
           )}
           
-          {percentage < 100 && (
+          {percentage < blockThreshold && (
             <span className="text-slate-400 dark:text-slate-500">
               Kalan: <strong className="text-slate-600 dark:text-slate-300 font-semibold">{formatCurrency(remaining, currency)}</strong>
             </span>

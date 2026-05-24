@@ -7,7 +7,7 @@ interface AuthContextType {
   loading: boolean;
   isDemo: boolean;
   signIn: (email: string, password?: string, forceDemo?: boolean) => Promise<{ success: boolean; error?: string }>;
-  signUp: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+  signUp: (email: string, password?: string, fullName?: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ success: boolean; error?: string }>;
 }
@@ -38,6 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser({
               id: session.user.id,
               email: session.user.email || '',
+              full_name: session.user.user_metadata?.full_name || profileData?.full_name || session.user.email?.split('@')[0] || '',
               currency: (profileData?.currency as any) || 'TRY',
               theme: (profileData?.theme as any) || 'system',
               lang: savedLang,
@@ -88,6 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser({
             id: session.user.id,
             email: session.user.email || '',
+            full_name: session.user.user_metadata?.full_name || profileData?.full_name || session.user.email?.split('@')[0] || '',
             currency: (profileData?.currency as any) || 'TRY',
             theme: (profileData?.theme as any) || 'system',
             lang: savedLang,
@@ -121,6 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const mockUser: Profile = {
         id: 'demo-user-123',
         email: email || 'demo@moneymate.com',
+        full_name: email ? email.split('@')[0] : 'Demo Kullanıcı',
         currency: 'TRY',
         theme: 'system',
         lang: savedLang,
@@ -152,7 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Sign Up
-  const signUp = async (email: string, password?: string) => {
+  const signUp = async (email: string, password?: string, fullName?: string) => {
     setLoading(true);
 
     // If Supabase not configured, register as a demo user
@@ -162,6 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const mockUser: Profile = {
         id: 'demo-user-123',
         email,
+        full_name: fullName || email.split('@')[0],
         currency: 'TRY',
         theme: 'system',
         lang: savedLang,
@@ -178,6 +182,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { error } = await supabase.auth.signUp({
         email,
         password: password || '',
+        options: {
+          data: {
+            full_name: fullName || email.split('@')[0],
+          }
+        }
       });
 
       if (error) throw error;
@@ -234,12 +243,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (updates.theme !== undefined) updateFields.theme = updates.theme;
         if (updates.active_workspace_id !== undefined) updateFields.active_workspace_id = updates.active_workspace_id;
 
+        if (updates.full_name !== undefined) {
+          updateFields.full_name = updates.full_name;
+          try {
+            await supabase.auth.updateUser({
+              data: { full_name: updates.full_name }
+            });
+          } catch (e) {
+            console.error("Auth metadata update failed:", e);
+          }
+        }
+
         const { error } = await supabase
           .from('profiles')
           .update(updateFields)
           .eq('id', user.id);
 
-        if (error) throw error;
+        if (error) {
+          // If the profile DDL doesn't have full_name column yet, ignore error since it's saved in auth.users user_metadata
+          if (error.code === '42703' || error.message.includes('full_name')) {
+            console.warn("profiles table does not have full_name column, stored in user metadata only.");
+          } else {
+            throw error;
+          }
+        }
 
         setUser(updatedUser);
         return { success: true };

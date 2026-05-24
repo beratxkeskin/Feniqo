@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TrendingUp, Mail, Lock, Loader, ArrowRight, UserCheck, Play } from 'lucide-react';
+import { TrendingUp, Mail, Lock, Loader, ArrowRight, UserCheck, Play, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const Login: React.FC = () => {
@@ -8,6 +8,7 @@ export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
@@ -17,7 +18,7 @@ export const Login: React.FC = () => {
     setErrorMessage('');
     setSuccessMessage('');
 
-    if (!email.trim() || !password) {
+    if (!email.trim() || !password || (isRegister && !fullName.trim())) {
       setErrorMessage('Lütfen tüm zorunlu alanları doldurun.');
       return;
     }
@@ -36,7 +37,7 @@ export const Login: React.FC = () => {
 
     try {
       if (isRegister) {
-        const res = await signUp(email.trim(), password);
+        const res = await signUp(email.trim(), password, fullName.trim());
         if (res.success) {
           setSuccessMessage('Kayıt başarılı! Giriş yapılıyor...');
           setTimeout(async () => {
@@ -107,6 +108,28 @@ export const Login: React.FC = () => {
           {successMessage && (
             <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs rounded-xl text-center">
               {successMessage}
+            </div>
+          )}
+
+          {/* Full Name field (only in register mode) */}
+          {isRegister && (
+            <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-200">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-1">
+                Ad Soyad
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                  <User size={16} />
+                </span>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Ahmet Yılmaz"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-700 bg-slate-800/30 dark:bg-slate-900/20 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent pl-10 text-sm transition-all"
+                  required
+                />
+              </div>
             </div>
           )}
 

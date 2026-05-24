@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, X, Calendar, CheckCircle2, Loader, Copy } from 'lucide-react';
+import { Plus, X, Calendar, CheckCircle2, Loader, Copy, Brain } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
@@ -10,7 +10,7 @@ import { CustomSelect } from '../components/common/CustomSelect';
 
 export const Budgets: React.FC = () => {
   const { user } = useAuth();
-  const { budgets, categories, transactions, addOrUpdateBudget, copyBudgets } = useData();
+  const { budgets, categories, transactions, addOrUpdateBudget, copyBudgets, currentUserRole } = useData();
 
   // Date States - Default to current month YYYY-MM
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -50,6 +50,25 @@ export const Budgets: React.FC = () => {
       };
     });
   }, [filteredBudgets, transactions, selectedMonth]);
+
+  // Dynamic thresholds
+  const warningThreshold = useMemo(() => {
+    return parseInt(localStorage.getItem('moneymate_budget_warning_threshold') || '50');
+  }, []);
+
+
+  // Filter budgets exceeding warning threshold
+  const budgetsExceedingWarning = useMemo(() => {
+    return budgetsWithSpent.map(({ budget, spent }) => {
+      const percentage = budget.limit_amount > 0 ? Math.round((spent / budget.limit_amount) * 100) : 0;
+      return {
+        budget,
+        spent,
+        percentage
+      };
+    }).filter(b => b.percentage >= warningThreshold)
+      .sort((a, b) => b.percentage - a.percentage);
+  }, [budgetsWithSpent, warningThreshold]);
 
   // Automatically select the first category if empty
   useMemo(() => {
@@ -172,7 +191,7 @@ export const Budgets: React.FC = () => {
             />
           </div>
 
-          {showCopyButton && (
+          {currentUserRole === 'admin' && showCopyButton && (
             <button
               onClick={handleCopyPreviousBudget}
               disabled={isCopying}
@@ -187,15 +206,41 @@ export const Budgets: React.FC = () => {
             </button>
           )}
 
-          <button
-            onClick={() => setIsFormOpen(true)}
-            className="premium-btn-primary flex items-center space-x-2 py-2 px-4 text-xs font-semibold shadow-md whitespace-nowrap"
-          >
-            <Plus size={14} strokeWidth={2.5} />
-            <span>Limit Belirle</span>
-          </button>
+          {currentUserRole === 'admin' && (
+            <button
+              onClick={() => setIsFormOpen(true)}
+              className="premium-btn-primary flex items-center space-x-2 py-2 px-4 text-xs font-semibold shadow-md whitespace-nowrap"
+            >
+              <Plus size={14} strokeWidth={2.5} />
+              <span>Limit Belirle</span>
+            </button>
+          )}
         </div>
       </div>
+
+      {/* AI Coach Alert Suggestion Banner */}
+      {budgetsExceedingWarning.length > 0 && (
+        <div className="p-5 rounded-3xl border border-indigo-200 dark:border-indigo-500/20 bg-gradient-to-br from-indigo-50/50 to-brand-50/50 dark:from-indigo-950/10 dark:to-brand-950/10 text-slate-800 dark:text-slate-200 flex items-start space-x-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300 mb-6">
+          <div className="p-3 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center shrink-0 animate-pulse">
+            <Brain size={22} />
+          </div>
+          <div className="space-y-1.5">
+            <h5 className="font-bold text-sm uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
+              <span>{user?.lang === 'en' ? 'AI Financial Coach Alert' : 'AI Finansal Bütçe Koçu'}</span>
+              <span className="text-[10px] bg-indigo-500/10 px-2.5 py-0.5 rounded-full font-bold tracking-normal text-indigo-600 dark:text-indigo-400">
+                {user?.lang === 'en' ? 'Live Analysis' : 'Canlı Analiz'}
+              </span>
+            </h5>
+            <p className="text-xs font-semibold leading-relaxed text-slate-700 dark:text-slate-300">
+              {user?.lang === 'en' ? (
+                <>You have budget items close to or exceeding limits. To balance your monthly budget, consider pausing non-essential subscriptions or postponing discretionary shopping in the <strong>{categories.find(c => c.id === budgetsExceedingWarning[0].budget.category_id)?.name}</strong> category.</>
+              ) : (
+                <>Belirlediğiniz bütçe limitlerine yaklaşıyorsunuz veya limitleri aştınız. Aylık bütçenizi dengelemek için bu dönem <strong>{categories.find(c => c.id === budgetsExceedingWarning[0].budget.category_id)?.name}</strong> kategorisindeki zorunlu olmayan değişken harcamalarınızı ertelemenizi tavsiye ederim.</>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* BUDGET CARDS CONTAINER */}
       {budgetsWithSpent.length > 0 ? (
@@ -206,11 +251,11 @@ export const Budgets: React.FC = () => {
         </div>
       ) : (
         <EmptyState
-          iconName="PiggyBank"
+          iconName="PieChart"
           title="Bütçe Kaydı Bulunamadı"
           description={`Seçtiğiniz dönem (${selectedMonth}) için herhangi bir kategori bütçe limiti oluşturmadınız. Limitler ekleyerek bütçenizi kontrol edebilirsiniz.`}
-          actionText="Bütçe Limiti Belirle"
-          onAction={() => setIsFormOpen(true)}
+          actionText={currentUserRole === 'admin' ? "Bütçe Limiti Belirle" : undefined}
+          onAction={currentUserRole === 'admin' ? () => setIsFormOpen(true) : undefined}
         />
       )}
 

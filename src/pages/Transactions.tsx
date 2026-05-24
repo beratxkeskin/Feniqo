@@ -21,7 +21,7 @@ const INITIAL_FILTERS: FilterState = {
 };
 
 export const Transactions: React.FC = () => {
-  const { transactions, categories } = useData();
+  const { transactions, categories, currentUserRole } = useData();
   
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -188,13 +188,15 @@ export const Transactions: React.FC = () => {
             <span>CSV Dışa Aktar</span>
           </button>
           
-          <button
-            onClick={() => { setEditingTx(null); setIsFormOpen(true); }}
-            className="premium-btn-primary flex items-center space-x-2 py-2 px-4.5 text-xs font-semibold shadow-md"
-          >
-            <Plus size={14} strokeWidth={2.5} />
-            <span>Yeni İşlem Ekle</span>
-          </button>
+          {currentUserRole !== 'viewer' && (
+            <button
+              onClick={() => { setEditingTx(null); setIsFormOpen(true); }}
+              className="premium-btn-primary flex items-center space-x-2 py-2 px-4.5 text-xs font-semibold shadow-md"
+            >
+              <Plus size={14} strokeWidth={2.5} />
+              <span>Yeni İşlem Ekle</span>
+            </button>
+          )}
         </div>
       </div>
 

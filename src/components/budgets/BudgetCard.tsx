@@ -11,7 +11,7 @@ interface BudgetCardProps {
 }
 
 export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, spent }) => {
-  const { categories, deleteBudget } = useData();
+  const { categories, deleteBudget, currentUserRole } = useData();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Resolve category details
@@ -26,9 +26,23 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, spent }) => {
     setIsDeleteModalOpen(false);
   };
 
+  const percentage = budget.limit_amount > 0 ? Math.round((spent / budget.limit_amount) * 100) : 0;
+  const warningThreshold = parseInt(localStorage.getItem('moneymate_budget_warning_threshold') || '50');
+  const criticalThreshold = parseInt(localStorage.getItem('moneymate_budget_critical_threshold') || '80');
+  const blockThreshold = parseInt(localStorage.getItem('moneymate_budget_block_threshold') || '100');
+
+  let borderStyleClass = 'border-slate-200 dark:border-slate-800 shadow-sm';
+  if (percentage >= blockThreshold) {
+    borderStyleClass = 'border-red-500 dark:border-red-500/60 shadow-[0_0_15px_rgba(239,68,68,0.12)] dark:shadow-[0_0_20px_rgba(239,68,68,0.2)] ring-2 ring-red-500/15 animate-pulse border-t-2';
+  } else if (percentage >= criticalThreshold) {
+    borderStyleClass = 'border-amber-500 dark:border-amber-500/60 shadow-[0_0_10px_rgba(245,158,11,0.08)] dark:shadow-[0_0_15px_rgba(245,158,11,0.15)] ring-1 ring-amber-500/10 border-t-2';
+  } else if (percentage >= warningThreshold) {
+    borderStyleClass = 'border-yellow-400 dark:border-yellow-400/50 shadow-sm border-t-2';
+  }
+
   return (
     <>
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between space-y-4 relative overflow-hidden group">
+      <div className={`rounded-2xl border bg-white dark:bg-slate-900 p-5 hover:shadow-md transition-all duration-300 flex flex-col justify-between space-y-4 relative overflow-hidden group ${borderStyleClass}`}>
         
         {/* Top colored accent line */}
         <div 
@@ -57,13 +71,15 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, spent }) => {
           </div>
 
           {/* Delete Action Button */}
-          <button
-            onClick={() => setIsDeleteModalOpen(true)}
-            className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all"
-            title="Bütçeyi Sil"
-          >
-            <Icons.Trash2 size={16} />
-          </button>
+          {currentUserRole === 'admin' && (
+            <button
+              onClick={() => setIsDeleteModalOpen(true)}
+              className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
+              title="Bütçeyi Sil"
+            >
+              <Icons.Trash2 size={16} />
+            </button>
+          )}
         </div>
 
         {/* Card Body - Progress Section */}

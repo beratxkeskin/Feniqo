@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Goal } from '../../db/types';
 import { useAuth } from '../../context/AuthContext';
+import { useData } from '../../context/DataContext';
 import { formatCurrency, formatDate, getCurrencySymbol } from '../../utils/formatters';
 import { 
   Target, 
@@ -130,6 +131,7 @@ export const calculateEstimatedArrivalDate = (goal: Goal): string => {
 
 export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit, onDelete, onAddFunds }) => {
   const { user } = useAuth();
+  const { currentUserRole } = useData();
   const isEn = user?.lang === 'en';
   const [showQuickAction, setShowQuickAction] = useState<'add' | 'remove' | null>(null);
   const [amountInput, setAmountInput] = useState('');
@@ -207,22 +209,24 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit, onDelete, onAd
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center space-x-1">
-          <button 
-            onClick={() => onEdit(goal)}
-            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all"
-            title={isEn ? 'Edit' : 'Düzenle'}
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
-          <button 
-            onClick={() => onDelete(goal.id)}
-            className="p-2 text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all"
-            title={isEn ? 'Delete' : 'Sil'}
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
+        {currentUserRole === 'admin' && (
+          <div className="flex items-center space-x-1">
+            <button 
+              onClick={() => onEdit(goal)}
+              className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all"
+              title={isEn ? 'Edit' : 'Düzenle'}
+            >
+              <Edit2 className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => onDelete(goal.id)}
+              className="p-2 text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all"
+              title={isEn ? 'Delete' : 'Sil'}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Amounts and Progress Stats */}
@@ -308,74 +312,76 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit, onDelete, onAd
       </div>
 
       {/* Quick Fund Actions */}
-      <div className="pt-4 border-t border-slate-100 dark:border-slate-800/60 mt-auto">
-        {!showQuickAction ? (
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => { setShowQuickAction('add'); setErrorMsg(''); }}
-              className="flex-1 flex items-center justify-center space-x-1.5 py-2.5 px-4 bg-slate-50 hover:bg-brand-500 dark:bg-slate-800/40 dark:hover:bg-brand-600 text-slate-700 dark:text-slate-300 hover:text-white dark:hover:text-white border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold hover:shadow-sm transition-all duration-200"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>{isEn ? 'Add Funds' : 'Para Ekle'}</span>
-            </button>
-            <button
-              onClick={() => { setShowQuickAction('remove'); setErrorMsg(''); }}
-              className="flex-1 flex items-center justify-center space-x-1.5 py-2.5 px-4 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold transition-all duration-200"
-              disabled={goal.current_amount <= 0}
-            >
-              <Minus className="w-3.5 h-3.5" />
-              <span>{isEn ? 'Withdraw' : 'Para Çıkar'}</span>
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={handleAmountSubmit} className="animate-fade-in space-y-2">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-500 mb-1.5">
-              <span>{showQuickAction === 'add' ? (isEn ? 'Add Funds to Goal' : 'Hedefe Para Ekle') : (isEn ? 'Withdraw Funds from Goal' : 'Hedef Birikiminden Para Çıkar')}</span>
-              <button 
-                type="button" 
-                onClick={() => setShowQuickAction(null)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            
+      {currentUserRole === 'admin' && (
+        <div className="pt-4 border-t border-slate-100 dark:border-slate-800/60 mt-auto">
+          {!showQuickAction ? (
             <div className="flex items-center space-x-2">
-              <div className="relative flex-1">
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder={isEn ? 'Enter amount...' : 'Miktar girin...'}
-                  value={amountInput}
-                  onChange={(e) => setAmountInput(e.target.value)}
-                  className="w-full pl-3 pr-8 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-800 dark:text-slate-200 font-bold"
-                  disabled={isSubmitting}
-                  autoFocus
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                  {getCurrencySymbol(currency)}
-                </span>
-              </div>
               <button
-                type="submit"
-                disabled={isSubmitting}
-                className="p-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-md shadow-brand-500/10 flex items-center justify-center transition-all disabled:opacity-50"
+                onClick={() => { setShowQuickAction('add'); setErrorMsg(''); }}
+                className="flex-1 flex items-center justify-center space-x-1.5 py-2.5 px-4 bg-slate-50 hover:bg-brand-500 dark:bg-slate-800/40 dark:hover:bg-brand-600 text-slate-700 dark:text-slate-300 hover:text-white dark:hover:text-white border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold hover:shadow-sm transition-all duration-200"
               >
-                {isSubmitting ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Check className="w-4 h-4" />
-                )}
+                <Plus className="w-3.5 h-3.5" />
+                <span>{isEn ? 'Add Funds' : 'Para Ekle'}</span>
+              </button>
+              <button
+                onClick={() => { setShowQuickAction('remove'); setErrorMsg(''); }}
+                className="flex-1 flex items-center justify-center space-x-1.5 py-2.5 px-4 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold transition-all duration-200"
+                disabled={goal.current_amount <= 0}
+              >
+                <Minus className="w-3.5 h-3.5" />
+                <span>{isEn ? 'Withdraw' : 'Para Çıkar'}</span>
               </button>
             </div>
-            {errorMsg && (
-              <p className="text-[10px] font-semibold text-red-500 dark:text-red-400 animate-shake pl-1">
-                {errorMsg}
-              </p>
-            )}
-          </form>
-        )}
-      </div>
+          ) : (
+            <form onSubmit={handleAmountSubmit} className="animate-fade-in space-y-2">
+              <div className="flex items-center justify-between text-xs font-semibold text-slate-500 mb-1.5">
+                <span>{showQuickAction === 'add' ? (isEn ? 'Add Funds to Goal' : 'Hedefe Para Ekle') : (isEn ? 'Withdraw Funds from Goal' : 'Hedef Birikiminden Para Çıkar')}</span>
+                <button 
+                  type="button" 
+                  onClick={() => setShowQuickAction(null)}
+                  className="text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <div className="relative flex-1">
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder={isEn ? 'Enter amount...' : 'Miktar girin...'}
+                    value={amountInput}
+                    onChange={(e) => setAmountInput(e.target.value)}
+                    className="w-full pl-3 pr-8 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-800 dark:text-slate-200 font-bold"
+                    disabled={isSubmitting}
+                    autoFocus
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                    {getCurrencySymbol(currency)}
+                  </span>
+                </div>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="p-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl shadow-md shadow-brand-500/10 flex items-center justify-center transition-all disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+              {errorMsg && (
+                <p className="text-[10px] font-semibold text-red-500 dark:text-red-400 animate-shake pl-1">
+                  {errorMsg}
+                </p>
+              )}
+            </form>
+          )}
+        </div>
+      )}
 
     </div>
   );

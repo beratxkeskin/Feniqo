@@ -11,13 +11,13 @@ import {
   Target, 
   TrendingUp, 
   CheckCircle, 
-  PiggyBank, 
+  Wallet, 
   Sparkles 
 } from 'lucide-react';
 
 export const Goals: React.FC = () => {
   const { user } = useAuth();
-  const { goals, deleteGoal, addFundsToGoal } = useData();
+  const { goals, deleteGoal, addFundsToGoal, currentUserRole } = useData();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<any>(null);
@@ -76,15 +76,17 @@ export const Goals: React.FC = () => {
           </p>
         </div>
 
-        <div>
-          <button
-            onClick={handleAddNew}
-            className="premium-btn-primary flex items-center space-x-2 py-2.5 px-4.5 text-xs font-semibold shadow-md whitespace-nowrap"
-          >
-            <Plus size={15} strokeWidth={2.5} />
-            <span>Yeni Hedef Ekle</span>
-          </button>
-        </div>
+        {currentUserRole === 'admin' && (
+          <div>
+            <button
+              onClick={handleAddNew}
+              className="premium-btn-primary flex items-center space-x-2 py-2.5 px-4.5 text-xs font-semibold shadow-md whitespace-nowrap cursor-pointer"
+            >
+              <Plus size={15} strokeWidth={2.5} />
+              <span>Yeni Hedef Ekle</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Stats Summary Cards */}
@@ -93,7 +95,7 @@ export const Goals: React.FC = () => {
           {/* Total Savings Card */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-3xl p-5 shadow-sm flex items-center space-x-4">
             <div className="p-3 bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-2xl">
-              <PiggyBank className="w-6 h-6" />
+              <Wallet className="w-6 h-6" />
             </div>
             <div>
               <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">Toplam Birikim</span>
@@ -170,8 +172,8 @@ export const Goals: React.FC = () => {
           iconName="Target"
           title="Tasarruf Hedefi Bulunmuyor"
           description="Henüz hiçbir tasarruf hedefi eklemediniz. Hayalinizdeki laptop, tatil veya acil durum fonu için ilk hedefinizi oluşturun!"
-          actionText="İlk Hedefini Oluştur"
-          onAction={handleAddNew}
+          actionText={currentUserRole === 'admin' ? "İlk Hedefini Oluştur" : undefined}
+          onAction={currentUserRole === 'admin' ? handleAddNew : undefined}
         />
       )}
 

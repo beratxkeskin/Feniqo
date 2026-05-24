@@ -301,8 +301,6 @@ html.theme-ocean .min-h-screen {
   background-attachment: fixed;
 }
 html.theme-ocean.dark body,
-html.theme-ocean.dark .bg-slate-955,
-html.theme-ocean.dark .dark\:bg-slate-955,
 html.theme-ocean.dark .bg-slate-950,
 html.theme-ocean.dark .dark\:bg-slate-950,
 html.theme-ocean.dark .min-h-screen {
@@ -339,6 +337,22 @@ html.theme-ocean.dark .border-slate-800\/60,
 html.theme-ocean.dark .dark\:border-slate-800\/60,
 html.theme-ocean.dark .border-r {
   border-color: rgba(77, 119, 94, 0.2) !important;
+}
+
+/* Notification Bell Shaking Keyframes */
+@keyframes bell-shake {
+  0%, 100% { transform: rotate(0); }
+  15% { transform: rotate(10deg); }
+  30% { transform: rotate(-10deg); }
+  45% { transform: rotate(5deg); }
+  60% { transform: rotate(-5deg); }
+  75% { transform: rotate(2deg); }
+  85% { transform: rotate(-2deg); }
+}
+
+.animate-bell-shake {
+  animation: bell-shake 1.2s ease-in-out infinite;
+  transform-origin: top center;
 }
 
 
