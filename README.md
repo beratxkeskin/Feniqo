@@ -1,8 +1,5 @@
 # 🎯 feniqo | Modern Personal Finance Tracker, Workspace Split & Wealth Analysis Platform
 
-<p align="center">
-  <img src="public/favicon.png" alt="feniqo Premium Logo" width="120px" />
-</p>
 
 [English](#english) | [Türkçe](#türkçe)
 
