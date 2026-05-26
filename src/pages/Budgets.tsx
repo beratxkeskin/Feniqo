@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, X, Calendar, CheckCircle2, Loader, Copy, Brain } from 'lucide-react';
 import * as Icons from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { BudgetCard } from '../components/budgets/BudgetCard';
@@ -149,6 +150,151 @@ export const Budgets: React.FC = () => {
     }
   };
 
+  // Akıllı Bütçe Kuralı Koçu (50/30/20 Analizi) Hesaplamaları
+  const analysis503020 = useMemo(() => {
+    const classifyCategory = (catName: string, catId: string): 'needs' | 'wants' | 'savings' => {
+      const nameLower = catName.toLowerCase();
+      const idLower = catId.toLowerCase();
+
+      // Savings check
+      const savingsKeys = ['tasarruf', 'birikim', 'yatırım', 'yatirim', 'hisse', 'altın', 'altin', 'fon', 'tahvil', 'kripto', 'savings', 'investment'];
+      if (savingsKeys.some(k => nameLower.includes(k) || idLower.includes(k))) {
+        return 'savings';
+      }
+
+      // Needs check
+      const needsKeys = ['kira', 'market', 'fatura', 'ulaşım', 'ulasim', 'sağlık', 'saglik', 'eğitim', 'egitim', 'aidat', 'temel', 'needs', 'ihtiyaç', 'ihtiyac', 'vergi', 'sigorta', 'borç', 'borc', 'kredi', 'fatura', 'fat'];
+      if (needsKeys.some(k => nameLower.includes(k) || idLower.includes(k))) {
+        return 'needs';
+      }
+
+      // Wants check
+      return 'wants';
+    };
+
+    const thisMonthTxs = transactions.filter(t => t.transaction_date.startsWith(selectedMonth));
+    const income = thisMonthTxs.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    const expenses = thisMonthTxs.filter(t => t.type === 'expense');
+    const totalExpense = expenses.reduce((sum, t) => sum + t.amount, 0);
+
+    let needsSum = 0;
+    let wantsSum = 0;
+    let savingsSum = 0;
+
+    expenses.forEach(t => {
+      const cat = categories.find(c => c.id === t.category_id);
+      const catName = cat ? cat.name : '';
+      const catId = t.category_id || '';
+
+      const group = classifyCategory(catName, catId);
+      if (group === 'needs') {
+        needsSum += t.amount;
+      } else if (group === 'savings') {
+        savingsSum += t.amount;
+      } else {
+        wantsSum += t.amount;
+      }
+    });
+
+    const baseAmount = income > 0 ? income : (totalExpense > 0 ? totalExpense : 1);
+    
+    const needsPercent = totalExpense > 0 ? Math.round((needsSum / baseAmount) * 100) : 0;
+    const wantsPercent = totalExpense > 0 ? Math.round((wantsSum / baseAmount) * 100) : 0;
+    const savingsPercent = totalExpense > 0 ? Math.round((savingsSum / baseAmount) * 100) : 0;
+
+    const denom = (needsSum + wantsSum + savingsSum) || 1;
+    const needsProp = Math.round((needsSum / denom) * 100);
+    const wantsProp = Math.round((wantsSum / denom) * 100);
+    const savingsProp = Math.round((savingsSum / denom) * 100);
+
+    let score: 'excellent' | 'good' | 'warning' | 'critical' = 'good';
+    let statusText = 'Dengeli Bütçe';
+    let adviceText = '';
+
+    const lang = user?.lang || 'tr';
+    const isEn = lang === 'en';
+
+    if (income > 0) {
+      if (needsSum === 0 && wantsSum === 0 && savingsSum === 0) {
+        statusText = isEn ? 'Unspent' : 'Harcama Yapılmadı';
+        adviceText = isEn 
+          ? 'You haven\'t made any expenses this month yet. Plan your budget according to the 50/30/20 rule: 50% for Needs, 30% for Wants, 20% for Savings!'
+          : 'Bu ay henüz bir harcama yapmadınız. Bütçenizi 50/30/20 kuralına göre planlamaya başlayın: %50 İhtiyaçlar, %30 İstekler, %20 Tasarruf/Yatırım!';
+        score = 'excellent';
+      } else if (needsPercent <= 50 && wantsPercent <= 30 && savingsPercent >= 20) {
+        statusText = isEn ? 'Excellent Health' : 'Kusursuz Bütçe Sağlığı';
+        adviceText = isEn 
+          ? 'Perfect financial control! You kept your Needs below 50%, your Wants under 30%, and saved more than 20% of your income. Keep it up!'
+          : 'Harika bir finansal yönetim! İhtiyaçlarınızı %50, isteklerinizi %30 sınırında tutup gelirinizi %20\'den fazlasını biriktirdiniz. Bu şekilde devam edin!';
+        score = 'excellent';
+      } else if (wantsPercent > 40) {
+        statusText = isEn ? 'High Discretionary Spending' : 'Yüksek İstek Harcaması';
+        adviceText = isEn
+          ? `Your discretionary spending (Wants) is at %${wantsPercent}, exceeding the ideal 30% target. Try to freeze non-essential subscriptions or delay recreational purchases.`
+          : `İstek harcamalarınız gelirinize göre %${wantsPercent} seviyesine ulaşarak ideal hedef olan %30'u aşmış. Bütçenizi dengelemek için lüks tüketimi ve aboneliklerinizi gözden geçirmelisiniz.`;
+        score = 'critical';
+      } else if (needsPercent > 60) {
+        statusText = isEn ? 'High Essential Expenses' : 'Yüksek İhtiyaç Yükü';
+        adviceText = isEn
+          ? `Essential expenses (Needs) are eating up %${needsPercent} of your income (Ideal: 50%). Consider reviewing fixed bills, negotiating rents, or minimizing basic consumption costs.`
+          : `Sabit ve zorunlu giderleriniz (İhtiyaçlar) gelirinize göre %${needsPercent} seviyesine ulaşarak ideal olan %50 limitini aşmış. Sabit faturalarınızı veya temel tüketim masraflarınızı optimize etmelisiniz.`;
+        score = 'warning';
+      } else if (savingsPercent < 15) {
+        statusText = isEn ? 'Low Savings Rate' : 'Düşük Tasarruf Oranı';
+        adviceText = isEn
+          ? `Your savings and investments are only %${savingsPercent} (Ideal: 20%). Try setting aside at least 20% of your income automatically as soon as you receive your paycheck!`
+          : `Tasarruf ve yatırım oranınız %${savingsPercent} ile ideal hedef olan %20'nin altında kalmış. Maaşınız yatar yatmaz en az %20'sini otomatik olarak yatırım hesaplarınıza aktarmayı alışkanlık edinin!`;
+        score = 'warning';
+      } else {
+        statusText = isEn ? 'Healthy & Balanced' : 'Dengeli Bütçe Yönetimi';
+        adviceText = isEn
+          ? 'Your budget is fairly balanced. Your spending patterns are close to the 50/30/20 rule targets. Good job maintaining financial discipline!'
+          : 'Bütçeniz genel olarak oldukça dengeli. Harcama dağılımınız 50/30/20 hedeflerine yakın seyrediyor. Finansal disiplininiz için tebrikler!';
+        score = 'good';
+      }
+    } else {
+      if (totalExpense === 0) {
+        statusText = isEn ? 'No Data' : 'Veri Yok';
+        adviceText = isEn
+          ? 'No transactions found for this month yet. Add income and expenses to unlock live 50/30/20 rule coaching analysis!'
+          : 'Seçilen ay için henüz hiçbir işlem kaydı bulunmuyor. Gelir ve harcamalarınızı ekledikten sonra canlı 50/30/20 kuralı analizi burada belirecektir!';
+        score = 'good';
+      } else if (wantsProp > 45) {
+        statusText = isEn ? 'High Wants Proportion' : 'Harcamalarda İstek Ağırlığı';
+        adviceText = isEn
+          ? `Out of your total spending, %${wantsProp} went to discretionary Wants (Ideal target: 30%). You are allocating too much of your cash flow to luxury and leisure instead of savings.`
+          : `Toplam harcamalarınızın %${wantsProp} gibi büyük bir kısmı keyfi İsteklere gitmiş (İdeal hedef: %30). Bütçenizi korumak adına dışarıda yemek ve eğlence kalemlerini sınırlamayı düşünün.`;
+        score = 'critical';
+      } else if (savingsProp < 10) {
+        statusText = isEn ? 'Extremely Low Savings' : 'Çok Düşük Tasarruf / Yatırım';
+        adviceText = isEn
+          ? `Only %${savingsProp} of your expenses are directed towards Savings or Investments (Ideal target: 20%). Try cutting down on dining out and entertainment to boost your wealth-building rate.`
+          : `Toplam harcamalarınızın sadece %${savingsProp} kadarı Tasarruf ve Yatırıma ayrılmış (İdeal hedef: %20). Birikim hedeflerinize ve yatırım fonlarınıza daha fazla öncelik vermelisiniz.`;
+        score = 'warning';
+      } else {
+        statusText = isEn ? 'Reasonably Proportioned' : 'Dengeli Harcama Dağılımı';
+        adviceText = isEn
+          ? `Your spending proportions are quite healthy: Needs are %${needsProp}, Wants are %${wantsProp}, and Savings/Investments are %${savingsProp}. Add your monthly income to get even more precise targets!`
+          : `Harcamalarınız kendi içinde dengeli bir şekilde dağılmış: İhtiyaçlar %${needsProp}, İstekler %${wantsProp}, Tasarruflar ise %${savingsProp}. Canlı gelirlerinizi de ekleyerek daha net hedefler alabilirsiniz!`;
+        score = 'good';
+      }
+    }
+
+    return {
+      income,
+      totalExpense,
+      needsSum,
+      wantsSum,
+      savingsSum,
+      needsPercent: income > 0 ? needsPercent : needsProp,
+      wantsPercent: income > 0 ? wantsPercent : wantsProp,
+      savingsPercent: income > 0 ? savingsPercent : savingsProp,
+      score,
+      statusText,
+      adviceText
+    };
+  }, [transactions, categories, selectedMonth, user]);
+
   const categoryOptions = useMemo(() => {
     return expenseCategories.map((cat) => {
       const IconComponent = (Icons as any)[cat.icon || 'HelpCircle'];
@@ -216,6 +362,201 @@ export const Budgets: React.FC = () => {
             </button>
           )}
         </div>
+      </div>
+
+      {/* 50/30/20 Smart Budget Rule Coach Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        
+        {/* Donut Chart & Status Card */}
+        <div className="lg:col-span-1 p-5 rounded-3xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 shadow-sm space-y-4 hover:shadow-md transition-all duration-200 flex flex-col items-center justify-center relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/10 dark:bg-brand-500/5 blur-3xl rounded-full pointer-events-none" />
+          
+          <div className="text-center w-full">
+            <h3 className="font-extrabold text-slate-800 dark:text-slate-200 text-sm tracking-tight">
+              {user?.lang === 'en' ? '50/30/20 Budget Allocations' : '50/30/20 Bütçe Dağılımı'}
+            </h3>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold uppercase tracking-wider mt-0.5">
+              {user?.lang === 'en' ? 'Live Month Proportions' : 'Bu Ayki Harcama Dağılımı'}
+            </p>
+          </div>
+
+          {/* RECHARTS PIE CHART */}
+          <div className="w-[170px] h-[170px] relative flex items-center justify-center pt-2">
+            {analysis503020.totalExpense > 0 ? (
+              <>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: user?.lang === 'en' ? 'Needs' : 'İhtiyaçlar', value: analysis503020.needsSum, color: '#3B82F6' },
+                        { name: user?.lang === 'en' ? 'Wants' : 'İstekler', value: analysis503020.wantsSum, color: '#EC4899' },
+                        { name: user?.lang === 'en' ? 'Savings' : 'Tasarruf/Yatırım', value: analysis503020.savingsSum, color: '#10B981' }
+                      ].filter(d => d.value > 0)}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={52}
+                      outerRadius={68}
+                      paddingAngle={4}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {[
+                        { color: '#3B82F6' },
+                        { color: '#EC4899' },
+                        { color: '#10B981' }
+                      ].map((cell, index) => (
+                        <Cell key={`cell-${index}`} fill={cell.color} className="filter drop-shadow-[0_0_8px_var(--cell-color)]" style={{ '--cell-color': cell.color } as any} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                
+                {/* Central Status Indicator */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pt-3 text-center">
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none">Score</span>
+                  <span className={`text-base font-black tracking-tight mt-1 ${
+                    analysis503020.score === 'excellent' 
+                      ? 'text-emerald-500 dark:text-emerald-400' 
+                      : analysis503020.score === 'good'
+                      ? 'text-brand-500 dark:text-brand-400'
+                      : analysis503020.score === 'warning'
+                      ? 'text-amber-500 dark:text-amber-400'
+                      : 'text-rose-500 dark:text-rose-400 animate-pulse'
+                  }`}>
+                    {analysis503020.score === 'excellent' ? '100' : analysis503020.score === 'good' ? '85' : analysis503020.score === 'warning' ? '60' : '40'}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div className="h-full w-full flex items-center justify-center text-center text-[10px] font-bold text-slate-400/80 p-4 leading-normal">
+                {user?.lang === 'en' ? 'Add expenses to see proportions' : 'Oranları görmek için harcama girin'}
+              </div>
+            )}
+          </div>
+
+          {/* Simple Legend */}
+          <div className="flex items-center justify-between w-full text-[10px] font-bold px-1 border-t border-slate-100 dark:border-slate-800/60 pt-3.5 mt-1">
+            <div className="flex items-center space-x-1.5 text-blue-500">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.5)]" />
+              <span>{user?.lang === 'en' ? 'Needs' : 'İhtiyaç'}: %{analysis503020.needsPercent}</span>
+            </div>
+            <div className="flex items-center space-x-1.5 text-pink-500">
+              <span className="w-1.5 h-1.5 rounded-full bg-pink-500 shadow-[0_0_5px_rgba(236,72,153,0.5)]" />
+              <span>{user?.lang === 'en' ? 'Wants' : 'İstek'}: %{analysis503020.wantsPercent}</span>
+            </div>
+            <div className="flex items-center space-x-1.5 text-emerald-500">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]" />
+              <span>{user?.lang === 'en' ? 'Savings' : 'Yatırım'}: %{analysis503020.savingsPercent}</span>
+            </div>
+          </div>
+
+        </div>
+
+        {/* AI Coach Detailed Analysis Card */}
+        <div className="lg:col-span-2 p-5 rounded-3xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200 relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-32 h-32 bg-indigo-500/10 dark:bg-indigo-500/5 blur-3xl rounded-full pointer-events-none" />
+          
+          <div className="space-y-4 flex-1">
+            {/* Header with status */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800/60 w-full">
+              <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-sm tracking-tight flex items-center space-x-2">
+                <span className="p-1 bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-lg shrink-0">
+                  <Brain size={14} className="animate-pulse" />
+                </span>
+                <span>{user?.lang === 'en' ? 'AI Financial Coach Insights' : 'AI Finansal Bütçe Koçu Raporu'}</span>
+              </h4>
+              <span className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${
+                analysis503020.score === 'excellent' 
+                  ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400' 
+                  : analysis503020.score === 'good'
+                  ? 'bg-brand-50 dark:bg-brand-950/20 text-brand-600 dark:text-brand-400'
+                  : analysis503020.score === 'warning'
+                  ? 'bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400'
+                  : 'bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 animate-pulse'
+              }`}>
+                {analysis503020.statusText}
+              </span>
+            </div>
+
+            {/* Sub-bars comparing targets */}
+            <div className="space-y-3">
+              {/* Needs bar */}
+              <div className="space-y-1">
+                <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                  <span>{user?.lang === 'en' ? 'Needs (Essential Expenses)' : 'İhtiyaçlar (Temel Yaşam & Faturalar)'}</span>
+                  <span className="flex items-center space-x-1.5 font-semibold">
+                    <span className="text-blue-500">%{analysis503020.needsPercent}</span>
+                    <span className="text-slate-300 dark:text-slate-600">/</span>
+                    <span>50%</span>
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-slate-100 dark:bg-slate-800/80 rounded-full overflow-hidden flex">
+                  <div 
+                    className="h-full bg-blue-500 rounded-full transition-all duration-500 shadow-[0_0_6px_rgba(59,130,246,0.5)]" 
+                    style={{ width: `${Math.min(analysis503020.needsPercent, 100)}%` }} 
+                  />
+                  {analysis503020.needsPercent > 50 && (
+                    <div 
+                      className="h-full bg-rose-500 transition-all duration-500 animate-pulse" 
+                      style={{ width: `${Math.min(analysis503020.needsPercent - 50, 50)}%` }}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Wants bar */}
+              <div className="space-y-1">
+                <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                  <span>{user?.lang === 'en' ? 'Wants (Leisure & Luxury)' : 'İstekler (Kafe, Eğlence, Lüks)'}</span>
+                  <span className="flex items-center space-x-1.5 font-semibold">
+                    <span className="text-pink-500">%{analysis503020.wantsPercent}</span>
+                    <span className="text-slate-300 dark:text-slate-600">/</span>
+                    <span>30%</span>
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-slate-100 dark:bg-slate-800/80 rounded-full overflow-hidden flex">
+                  <div 
+                    className="h-full bg-pink-500 rounded-full transition-all duration-500 shadow-[0_0_6px_rgba(236,72,153,0.5)]" 
+                    style={{ width: `${Math.min(analysis503020.wantsPercent, 100)}%` }} 
+                  />
+                  {analysis503020.wantsPercent > 30 && (
+                    <div 
+                      className="h-full bg-rose-500 transition-all duration-500 animate-pulse" 
+                      style={{ width: `${Math.min(analysis503020.wantsPercent - 30, 70)}%` }}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Savings bar */}
+              <div className="space-y-1">
+                <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                  <span>{user?.lang === 'en' ? 'Savings & Investments (Altın, Hisse, Birikim)' : 'Tasarruf & Yatırım (Altın, Borsa, Hedefler)'}</span>
+                  <span className="flex items-center space-x-1.5 font-semibold">
+                    <span className="text-emerald-500">%{analysis503020.savingsPercent}</span>
+                    <span className="text-slate-300 dark:text-slate-600">/</span>
+                    <span>20%</span>
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-slate-100 dark:bg-slate-800/80 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-emerald-500 rounded-full transition-all duration-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]" 
+                    style={{ width: `${Math.min(analysis503020.savingsPercent, 100)}%` }} 
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* AI Speech Bubble Advice */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-slate-600 dark:text-slate-300 leading-relaxed relative flex items-start space-x-2 mt-4 select-text">
+              <span className="text-lg leading-none select-none">💬</span>
+              <span>{analysis503020.adviceText}</span>
+            </div>
+
+          </div>
+
+        </div>
+
       </div>
 
       {/* AI Coach Alert Suggestion Banner */}

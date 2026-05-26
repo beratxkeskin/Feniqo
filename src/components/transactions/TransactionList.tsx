@@ -60,7 +60,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
                 const spender = workspaceMembers.find(m => m.id === tx.user_id);
                 const spenderName = spender 
                   ? (spender.email === user?.email ? (user?.lang === 'en' ? 'You' : 'Siz') : spender.email.split('@')[0])
-                  : (tx.user_id === 'demo-partner-456' ? 'Buse' : (user?.lang === 'en' ? 'You' : 'Siz'));
+                  : (tx.user_id === 'demo-partner-456' ? 'Şifa' : (user?.lang === 'en' ? 'You' : 'Siz'));
 
                 return (
                   <tr 
@@ -96,6 +96,11 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
                           <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
                             {tx.description || <span className="text-slate-400 dark:text-slate-500 italic">Detay yok</span>}
                           </span>
+                          {tx.installment_number && tx.total_installments && (
+                            <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-extrabold bg-brand-50 dark:bg-brand-950/20 text-brand-600 dark:text-brand-400 border border-brand-100 dark:border-brand-900/50" title="Taksit Bilgisi">
+                              {tx.installment_number}/{tx.total_installments} Taksit
+                            </span>
+                          )}
                           {tx.receipt_url && (
                             <a href={tx.receipt_url} target="_blank" rel="noopener noreferrer" className="text-brand-500 hover:text-brand-600 dark:hover:text-brand-400 shrink-0 p-1 bg-brand-50 dark:bg-brand-900/20 rounded-md" title="Makbuzu Görüntüle">
                                <Icons.Paperclip size={14} />
@@ -181,7 +186,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
             const spender = workspaceMembers.find(m => m.id === tx.user_id);
             const spenderName = spender 
               ? (spender.email === user?.email ? (user?.lang === 'en' ? 'You' : 'Siz') : spender.email.split('@')[0])
-              : (tx.user_id === 'demo-partner-456' ? 'Buse' : (user?.lang === 'en' ? 'You' : 'Siz'));
+              : (tx.user_id === 'demo-partner-456' ? 'Şifa' : (user?.lang === 'en' ? 'You' : 'Siz'));
 
             return (
               <div 
@@ -243,6 +248,11 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
                       <p className="text-xs text-slate-700 dark:text-slate-300 font-semibold line-clamp-1">
                         {tx.description || <span className="text-slate-400 dark:text-slate-500 italic">Açıklama yok</span>}
                       </p>
+                      {tx.installment_number && tx.total_installments && (
+                        <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-extrabold bg-brand-50 dark:bg-brand-950/20 text-brand-600 dark:text-brand-400 border border-brand-100 dark:border-brand-900/50">
+                          {tx.installment_number}/{tx.total_installments} Taksit
+                        </span>
+                      )}
                       {tx.receipt_url && (
                         <a href={tx.receipt_url} target="_blank" rel="noopener noreferrer" className="text-brand-500 bg-brand-50 dark:bg-brand-900/20 p-1 rounded-md shrink-0">
                           <Icons.Paperclip size={12} />
@@ -279,16 +289,84 @@ export const TransactionList: React.FC<TransactionListProps> = ({ transactions, 
 
       </div>
 
-      {/* Delete Confirmation Modal */}
-      <ConfirmModal
-        isOpen={txToDelete !== null}
-        title="İşlem Silinsin mi?"
-        message="Seçilen finansal işlemi kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
-        confirmText="İşlemi Sil"
-        onConfirm={handleDeleteConfirm}
-        onCancel={() => setTxToDelete(null)}
-        isDangerous={true}
-      />
+      {/* Delete Confirmation Modal for Single (Non-Installment) Transactions */}
+      {txToDelete !== null && !txToDelete.installment_group_id && (
+        <ConfirmModal
+          isOpen={txToDelete !== null}
+          title="İşlem Silinsin mi?"
+          message="Seçilen finansal işlemi kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+          confirmText="İşlemi Sil"
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setTxToDelete(null)}
+          isDangerous={true}
+        />
+      )}
+
+      {/* Delete Confirmation Modal for Installment Transactions */}
+      {txToDelete !== null && txToDelete.installment_group_id && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center space-x-3 text-amber-500">
+              <Icons.AlertTriangle className="w-8 h-8 shrink-0" />
+              <h3 className="text-lg font-extrabold text-slate-900 dark:text-slate-100">
+                Taksit Serisi Silinsin mi?
+              </h3>
+            </div>
+            
+            <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+              Bu işlem bir taksitli kredi kartı serisine aittir: <strong className="text-slate-800 dark:text-slate-200">{txToDelete.description}</strong>. Nasıl silmek istersiniz?
+            </p>
+
+            <div className="flex flex-col space-y-3 pt-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  await deleteTransaction(txToDelete.id, 'one');
+                  setTxToDelete(null);
+                }}
+                className="w-full text-left py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300 transition-all flex flex-col space-y-0.5 hover:border-brand-500"
+              >
+                <span className="text-sm font-bold">1. Sadece Bu Taksiti Sil</span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-500 font-medium">Sadece bu aya ait {formatCurrency(txToDelete.amount, currency)} tutarındaki taksit kaydı silinir.</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  await deleteTransaction(txToDelete.id, 'future');
+                  setTxToDelete(null);
+                }}
+                className="w-full text-left py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300 transition-all flex flex-col space-y-0.5 hover:border-amber-500"
+              >
+                <span className="text-sm font-bold text-amber-600 dark:text-amber-400">2. Bu ve Gelecekteki Taksitleri Sil</span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-500 font-medium">Bu işlemden itibaren sonraki aylara planlanan taksitler kaldırılır.</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  await deleteTransaction(txToDelete.id, 'all');
+                  setTxToDelete(null);
+                }}
+                className="w-full text-left py-3 px-4 rounded-xl border border-red-100 dark:border-red-950/20 bg-red-50/30 dark:bg-red-950/10 hover:bg-red-50 dark:hover:bg-red-950/20 text-slate-700 dark:text-slate-300 transition-all flex flex-col space-y-0.5 hover:border-red-500"
+              >
+                <span className="text-sm font-bold text-red-600 dark:text-red-400">3. Tüm Taksit Serisini Sil</span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-500 font-medium">Geçmiş ve gelecek dahil bu seriye ait tüm taksitler tamamen temizlenir.</span>
+              </button>
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-800/50">
+              <button
+                type="button"
+                onClick={() => setTxToDelete(null)}
+                className="premium-btn-secondary py-2 px-4 text-xs font-bold"
+              >
+                Vazgeç
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import { supabase } from '../db/supabaseClient';
 import { CustomSelect } from '../components/common/CustomSelect';
 import { EmptyState } from '../components/common/EmptyState';
 import { formatCurrency } from '../utils/formatters';
@@ -79,7 +80,12 @@ const translations = {
     refreshRatesTooltip: 'Kurları Şimdi Güncelle',
     ratesModeRealtime: 'Canlı Kur',
     ratesModeDaily: 'Günlük Önbellek',
-    ratesModeManual: 'Manuel Kur'
+    ratesModeManual: 'Manuel Kur',
+    autoTrack: 'Canlı Fiyat Takibi (Otomatik Güncelle)',
+    autoTrackDesc: 'Seçilen varlık için anlık piyasa fiyatını otomatik çeker.',
+    trackingSymbolLabel: 'Takip Edilecek Varlık',
+    stockSymbolPlaceholder: 'Örn: THYAO.IS veya AAPL',
+    autoTrackValueDisabled: 'Canlı API fiyatı ile otomatik hesaplanır',
   },
   en: {
     title: 'Asset Tracker & Net Worth',
@@ -124,7 +130,12 @@ const translations = {
     refreshRatesTooltip: 'Refresh Rates Now',
     ratesModeRealtime: 'Real-time Rates',
     ratesModeDaily: 'Daily Cached',
-    ratesModeManual: 'Manual Rates'
+    ratesModeManual: 'Manual Rates',
+    autoTrack: 'Auto-track Live Price',
+    autoTrackDesc: 'Automatically fetches real-time market price for this asset.',
+    trackingSymbolLabel: 'Asset to Track',
+    stockSymbolPlaceholder: 'e.g., AAPL or THYAO.IS',
+    autoTrackValueDisabled: 'Automatically calculated via live API',
   }
 };
 
@@ -155,6 +166,33 @@ export const NetWorth: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Auto-track States
+  const [autoTrack, setAutoTrack] = useState(false);
+  const [trackingSymbol, setTrackingSymbol] = useState('');
+  const [livePrices, setLivePrices] = useState<Record<string, number>>(() => {
+    try {
+      const data = localStorage.getItem('moneymate_price_cache');
+      if (data) {
+        const parsed = JSON.parse(data);
+        const prices: Record<string, number> = {};
+        Object.keys(parsed).forEach(k => {
+          prices[k] = parsed[k].price;
+          if (parsed[k].currency) {
+            prices[`stock_raw_${k}`] = parsed[k].price;
+            prices[`stock_currency_${k}`] = parsed[k].currency;
+          }
+        });
+        return prices;
+      }
+    } catch (e) {
+      // ignore
+    }
+    return {};
+  });
+  const [isSyncingPrices, setIsSyncingPrices] = useState(false);
+  const hasSyncedThisSession = React.useRef(false);
+  const syncedAssetIds = React.useRef<Set<string>>(new Set());
+
   const lang = user?.lang || 'tr';
   const t = translations[lang];
   const currency = user?.currency || 'TRY';
@@ -174,7 +212,7 @@ export const NetWorth: React.FC = () => {
         // Fallback
       }
     }
-    return { TRY: 1, USD: 1, EUR: 1 };
+    return { [baseCur]: 1 };
   });
 
   const [ratesTimestamp, setRatesTimestamp] = useState<number | null>(() => {
@@ -182,6 +220,26 @@ export const NetWorth: React.FC = () => {
     const stored = localStorage.getItem(`moneymate_rates_timestamp_${baseCur}`);
     return stored ? parseInt(stored) : null;
   });
+
+  const getAssetNaturalCurrency = (asset: any) => {
+    if (!asset.auto_track || !asset.tracking_symbol) return user?.currency || 'TRY';
+    if (asset.type === 'crypto') return 'USD';
+    if (asset.type === 'precious_metals') return 'TRY';
+    if (asset.type === 'stocks') {
+      const symbol = asset.tracking_symbol.toUpperCase();
+      if (symbol.endsWith('.IS')) return 'TRY';
+      return 'USD';
+    }
+    return user?.currency || 'TRY';
+  };
+
+  const convertCurrency = (amount: number, fromCurrency: string, toCurrency: string) => {
+    if (fromCurrency === toCurrency) return amount;
+    const fromRate = rates[fromCurrency] || 1;
+    const amountInBase = amount / fromRate;
+    const toRate = rates[toCurrency] || 1;
+    return amountInBase * toRate;
+  };
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [tick, setTick] = useState(0);
@@ -289,12 +347,294 @@ export const NetWorth: React.FC = () => {
     }
   };
 
+  const fetchWithTimeout = async (url: string, timeoutMs = 5000): Promise<Response> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      return res;
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+  const fetchWithCORSProxy = async (url: string): Promise<any> => {
+    // Add cache-busting parameter so Yahoo/proxies don't return cached block pages
+    const separator = url.includes('?') ? '&' : '?';
+    const cacheBustUrl = `${url}${separator}_nocache=${Date.now()}`;
+    const targetUrlEncoded = encodeURIComponent(cacheBustUrl);
+    
+    // We define the 4 most robust proxy calls
+    const proxyAttempts = [
+      // 1. corsproxy.io (Very fast direct proxy)
+      (async () => {
+        const res = await fetchWithTimeout(`https://corsproxy.io/?${targetUrlEncoded}`, 5000);
+        if (!res.ok) throw new Error("corsproxy.io status not ok");
+        return await res.json();
+      })(),
+      // 2. thingproxy.freeboard.io (Extremely robust, different IP range, rarely blocked)
+      (async () => {
+        const res = await fetchWithTimeout(`https://thingproxy.freeboard.io/fetch/${cacheBustUrl}`, 5000);
+        if (!res.ok) throw new Error("thingproxy status not ok");
+        return await res.json();
+      })(),
+      // 3. allorigins.win (RAW mode bypasses wrapper and returns direct JSON cleanly)
+      (async () => {
+        const res = await fetchWithTimeout(`https://api.allorigins.win/raw?url=${targetUrlEncoded}`, 5000);
+        if (!res.ok) throw new Error("allorigins.win status not ok");
+        return await res.json();
+      })(),
+      // 4. allorigins.win (Sarmalanmış klasik mod - farklı sunucu rotası)
+      (async () => {
+        const res = await fetchWithTimeout(`https://api.allorigins.win/get?url=${targetUrlEncoded}`, 5000);
+        if (!res.ok) throw new Error("allorigins wrapped status not ok");
+        const wrap = await res.json();
+        return JSON.parse(wrap.contents);
+      })()
+    ];
+
+    // Fire all in parallel! The fastest successful one wins.
+    try {
+      return await Promise.any(proxyAttempts);
+    } catch (err) {
+      console.error("All parallel CORS proxies failed for URL:", url, err);
+      throw new Error("All CORS proxies failed to fetch: " + url);
+    }
+  };
+
+  const getPriceCache = (): Record<string, { price: number; currency?: string; timestamp: number }> => {
+    try {
+      const data = localStorage.getItem('moneymate_price_cache');
+      return data ? JSON.parse(data) : {};
+    } catch (e) {
+      return {};
+    }
+  };
+
+  const setPriceCache = (cache: Record<string, { price: number; currency?: string; timestamp: number }>) => {
+    try {
+      localStorage.setItem('moneymate_price_cache', JSON.stringify(cache));
+    } catch (e) {
+      console.error("Failed to write price cache", e);
+    }
+  };
+
+  const fetchLivePrices = async (assetsToSync = assets, force = false) => {
+    setIsSyncingPrices(true);
+    const newLivePrices: Record<string, number> = {};
+    const baseCur = user?.currency || 'TRY';
+
+    try {
+      const cache = getPriceCache();
+      const CACHE_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+      // 1. Fetch Gold/Silver Prices from gold-api.com (Native CORS, 100% reliable and bypassing proxy blocks)
+      let goldApiSucceeded = false;
+      const goldKeys = ['GRA', 'HAS', 'CEYREKALTIN', 'YARIMALTIN', 'TAMALTIN', 'CUMHURIYETALTINI', 'ATAALTIN', 'GUMUS'];
+      const goldCacheValid = !force && goldKeys.every(k => cache[k] && (Date.now() - cache[k].timestamp < CACHE_EXPIRATION_MS));
+
+      if (goldCacheValid) {
+        goldKeys.forEach(k => {
+          newLivePrices[k] = cache[k].price;
+        });
+        goldApiSucceeded = true;
+      } else {
+        try {
+          const goldRes = await fetch('https://api.gold-api.com/price/XAU');
+          if (goldRes.ok) {
+            const goldData = await goldRes.json();
+            const goldPriceUSD = goldData.price;
+            if (goldPriceUSD > 0) {
+              const gramGoldUSD = goldPriceUSD / 31.1034768;
+              
+              // Unified base-currency conversion formula to convert USD gold price to TRY
+              const usdRate = rates['USD'] || 0.03;
+              const tryRate = rates['TRY'] || 1;
+              const gramGoldTRY = (gramGoldUSD / usdRate) * tryRate;
+
+              newLivePrices['GRA'] = gramGoldTRY;
+              newLivePrices['HAS'] = gramGoldTRY;
+              newLivePrices['CEYREKALTIN'] = gramGoldTRY * 1.647;
+              newLivePrices['YARIMALTIN'] = gramGoldTRY * 3.295;
+              newLivePrices['TAMALTIN'] = gramGoldTRY * 6.57;
+              newLivePrices['CUMHURIYETALTINI'] = gramGoldTRY * 6.78;
+              newLivePrices['ATAALTIN'] = gramGoldTRY * 6.81;
+              
+              goldKeys.forEach(k => {
+                if (newLivePrices[k]) {
+                  cache[k] = { price: newLivePrices[k], currency: 'TRY', timestamp: Date.now() };
+                }
+              });
+              goldApiSucceeded = true;
+            }
+          }
+
+          const silverRes = await fetch('https://api.gold-api.com/price/XAG');
+          if (silverRes.ok) {
+            const silverData = await silverRes.json();
+            const silverPriceUSD = silverData.price;
+            if (silverPriceUSD > 0) {
+              const gramSilverUSD = silverPriceUSD / 31.1034768;
+              const usdRate = rates['USD'] || 0.03;
+              const tryRate = rates['TRY'] || 1;
+              const gramSilverTRY = (gramSilverUSD / usdRate) * tryRate;
+              newLivePrices['GUMUS'] = gramSilverTRY;
+              cache['GUMUS'] = { price: gramSilverTRY, currency: 'TRY', timestamp: Date.now() };
+            }
+          }
+          setPriceCache(cache);
+        } catch (e) {
+          console.warn("Direct gold-api.com fetch failed, trying Truncgil fallback", e);
+        }
+
+        // Fetch Gold Prices from Truncgil API (as robust fallback)
+        if (!goldApiSucceeded) {
+          try {
+            const data = await fetchWithCORSProxy('https://finans.truncgil.com/v4/today.json');
+            const goldKeysTruncgil = ['GRA', 'CEYREKALTIN', 'YARIMALTIN', 'TAMALTIN', 'CUMHURIYETALTINI', 'ATAALTIN', 'GUMUS', 'GPL', 'PAL', 'HAS'];
+            goldKeysTruncgil.forEach(key => {
+              if (data[key]) {
+                const sellingVal = data[key].Selling;
+                let parsedPrice = 0;
+                if (typeof sellingVal === 'number') {
+                  parsedPrice = sellingVal;
+                } else if (typeof sellingVal === 'string') {
+                  parsedPrice = parseFloat(sellingVal);
+                }
+
+                if (parsedPrice > 0) {
+                  newLivePrices[key] = parsedPrice;
+                  cache[key] = { price: parsedPrice, currency: 'TRY', timestamp: Date.now() };
+                }
+              }
+            });
+            setPriceCache(cache);
+            goldApiSucceeded = true;
+          } catch (e) {
+            console.error("Gold price fetch failed from Truncgil", e);
+          }
+        }
+      }
+
+      // If Gold/Silver fetching failed completely, fallback to expired cache
+      if (!goldApiSucceeded) {
+        let goldFallbackUsed = false;
+        goldKeys.forEach(k => {
+          if (cache[k]) {
+            newLivePrices[k] = cache[k].price;
+            goldFallbackUsed = true;
+          }
+        });
+        if (goldFallbackUsed) {
+          console.warn("Gold/Silver prices fetch failed, used cached prices as fallback");
+        }
+      }
+
+      // 2. Fetch Crypto Prices (CoinGecko API) in USD (their natural currency)
+      const coinIds = 'bitcoin,ethereum,solana,binancecoin,ripple,cardano,dogecoin';
+      const coins = coinIds.split(',');
+      const cryptoCacheValid = !force && coins.every(c => cache[c] && (Date.now() - cache[c].timestamp < CACHE_EXPIRATION_MS));
+
+      if (cryptoCacheValid) {
+        coins.forEach(c => {
+          newLivePrices[c] = cache[c].price;
+        });
+      } else {
+        try {
+          const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinIds}&vs_currencies=usd`);
+          if (res.ok) {
+            const data = await res.json();
+            coins.forEach(coinId => {
+              if (data[coinId]) {
+                const cryptoPrice = data[coinId]['usd'] || 0;
+                newLivePrices[coinId] = cryptoPrice;
+                cache[coinId] = { price: cryptoPrice, currency: 'USD', timestamp: Date.now() };
+              }
+            });
+            setPriceCache(cache);
+          } else {
+            throw new Error("CoinGecko simple price status not OK");
+          }
+        } catch (e) {
+          console.error("Crypto price fetch failed, using cache fallback", e);
+          // Fallback to cache even if expired
+          coins.forEach(c => {
+            if (cache[c]) {
+              newLivePrices[c] = cache[c].price;
+            }
+          });
+        }
+      }
+
+      // 3. Fetch Stock Prices (Removed)
+      // Stock price auto-tracking has been removed. Stocks are now completely manual assets.
+
+      setLivePrices(prev => ({ ...prev, ...newLivePrices }));
+
+      // 4. Auto-sync values back to database/localStorage if changed (stored in natural currency)
+      const autoTracked = assetsToSync.filter(a => a.auto_track && a.tracking_symbol);
+      for (const asset of autoTracked) {
+        const symbol = asset.tracking_symbol!;
+        const qty = asset.quantity || 0;
+        const livePrice = newLivePrices[symbol] || 0;
+
+        if (livePrice > 0) {
+          const computedValue = Number((qty * livePrice).toFixed(2));
+          if (Math.abs(computedValue - asset.value) > 0.05) {
+            await updateAsset(asset.id, { value: computedValue });
+          }
+        }
+      }
+
+      // Mark all synced assets in our ref so we don't trigger Hook 2 again for them
+      const getSyncKey = (a: any) => `${a.id}_${a.auto_track || false}_${a.tracking_symbol || ''}_${a.quantity || 0}`;
+      assetsToSync.forEach(a => {
+        if (a.auto_track) {
+          syncedAssetIds.current.add(getSyncKey(a));
+        }
+      });
+    } catch (err) {
+      console.error("General live price sync failed", err);
+    } finally {
+      setIsSyncingPrices(false);
+    }
+  };
+
+  const handleRefreshAll = async () => {
+    await fetchRates(true);
+    await fetchLivePrices(assets, true);
+  };
+
   React.useEffect(() => {
     fetchRates(false);
     const baseCur = user?.currency || 'TRY';
     const storedTimestamp = localStorage.getItem(`moneymate_rates_timestamp_${baseCur}`);
     setRatesTimestamp(storedTimestamp ? parseInt(storedTimestamp) : null);
   }, [user?.currency]);
+
+  const getSyncKey = (a: any) => `${a.id}_${a.auto_track || false}_${a.tracking_symbol || ''}_${a.quantity || 0}`;
+
+  // Hook 1: Pre-load prices once rates are ready (even if no assets are added yet, to feed the form modal)
+  React.useEffect(() => {
+    if (!hasSyncedThisSession.current) {
+      hasSyncedThisSession.current = true;
+      fetchLivePrices(assets, false);
+    }
+  }, [rates]);
+
+  // Hook 2: Sync loaded assets or newly added assets dynamically without infinite loops
+  React.useEffect(() => {
+    if (isSyncingPrices) return; // Prevent triggering while active sync is running
+    
+    if (assets.length > 0) {
+      const unsynced = assets.filter(a => a.auto_track && !syncedAssetIds.current.has(getSyncKey(a)));
+      if (unsynced.length > 0) {
+        // Break the loop by adding to synced ids immediately BEFORE calling fetchLivePrices
+        unsynced.forEach(a => syncedAssetIds.current.add(getSyncKey(a)));
+        fetchLivePrices(assets, false);
+      }
+    }
+  }, [assets]); // Removed rates dependency because Hook 1 already handles rates-triggered syncing
 
   const getRelativeTime = (timestamp: number | null) => {
     if (!timestamp) return '—';
@@ -318,9 +658,14 @@ export const NetWorth: React.FC = () => {
   }, [transactions]);
 
   const currentAssetsSum = useMemo(() => {
-    const manualSum = assets.reduce((sum, a) => sum + a.value, 0);
-    return manualSum + liquidCash;
-  }, [assets, liquidCash]);
+    const baseCur = user?.currency || 'TRY';
+    const assetsSumInBase = assets.reduce((sum, a) => {
+      const natCur = getAssetNaturalCurrency(a);
+      const valInBase = convertCurrency(a.value, natCur, baseCur);
+      return sum + valInBase;
+    }, 0);
+    return assetsSumInBase + liquidCash;
+  }, [assets, liquidCash, user?.currency, rates]);
 
   const currentLiabilitiesSum = useMemo(() => {
     // Sum only unpaid debts
@@ -363,7 +708,10 @@ export const NetWorth: React.FC = () => {
       if (key === 'liquid') {
         totalVal = liquidCash;
       } else {
-        totalVal = assets.filter(a => a.type === key).reduce((sum, a) => sum + a.value, 0);
+        totalVal = assets.filter(a => a.type === key).reduce((sum, a) => {
+          const natCur = getAssetNaturalCurrency(a);
+          return sum + convertCurrency(a.value, natCur, user?.currency || 'TRY');
+        }, 0);
       }
 
       // Translate type name
@@ -435,6 +783,8 @@ export const NetWorth: React.FC = () => {
     setQuantity('');
     setPurchasePrice('');
     setIsShared(true);
+    setAutoTrack(false);
+    setTrackingSymbol('');
     setErrorMsg('');
     setEditingAsset(null);
     setIsFormOpen(true);
@@ -448,6 +798,8 @@ export const NetWorth: React.FC = () => {
     setQuantity(asset.quantity ? asset.quantity.toString() : '');
     setPurchasePrice(asset.purchase_price ? asset.purchase_price.toString() : '');
     setIsShared(asset.workspace_id !== null);
+    setAutoTrack(asset.auto_track || false);
+    setTrackingSymbol(asset.tracking_symbol || '');
     setErrorMsg('');
     setIsFormOpen(true);
   };
@@ -467,19 +819,42 @@ export const NetWorth: React.FC = () => {
       return;
     }
 
-    const parsedValue = parseFloat(value);
-    if (isNaN(parsedValue) || parsedValue < 0) {
-      setErrorMsg(lang === 'tr' ? 'Lütfen geçerli bir değer girin.' : 'Please enter a valid asset value.');
-      return;
+    let calculatedValue = parseFloat(value);
+    const parsedQty = quantity ? parseFloat(quantity) : undefined;
+    const parsedCost = purchasePrice ? parseFloat(purchasePrice) : undefined;
+
+    if (autoTrack) {
+      const symbol = trackingSymbol;
+      if (!symbol) {
+        setErrorMsg(lang === 'tr' ? 'Lütfen takip edilecek varlığı belirleyin.' : 'Please specify the asset to track.');
+        return;
+      }
+
+      if (parsedQty === undefined || isNaN(parsedQty) || parsedQty <= 0) {
+        setErrorMsg(lang === 'tr' ? 'Otomatik canlı fiyat takibi için geçerli bir miktar girmelisiniz.' : 'You must enter a valid quantity for auto-tracking.');
+        return;
+      }
+
+      // Calculate calculatedValue based on livePrices in its natural currency directly!
+      const livePrice = livePrices[symbol] || 0;
+
+      if (livePrice <= 0) {
+        calculatedValue = editingAsset ? editingAsset.value : 0;
+      } else {
+        calculatedValue = Number((parsedQty * livePrice).toFixed(2));
+      }
+    } else {
+      if (isNaN(calculatedValue) || calculatedValue < 0) {
+        setErrorMsg(lang === 'tr' ? 'Lütfen geçerli bir değer girin.' : 'Please enter a valid asset value.');
+        return;
+      }
     }
 
-    const parsedQty = quantity ? parseFloat(quantity) : undefined;
     if (parsedQty !== undefined && (isNaN(parsedQty) || parsedQty < 0)) {
       setErrorMsg(lang === 'tr' ? 'Miktar sıfır veya daha büyük olmalıdır.' : 'Quantity must be zero or positive.');
       return;
     }
 
-    const parsedCost = purchasePrice ? parseFloat(purchasePrice) : undefined;
     if (parsedCost !== undefined && (isNaN(parsedCost) || parsedCost < 0)) {
       setErrorMsg(lang === 'tr' ? 'Alış fiyatı sıfır veya daha büyük olmalıdır.' : 'Purchase price must be zero or positive.');
       return;
@@ -490,10 +865,12 @@ export const NetWorth: React.FC = () => {
     const payload = {
       name: name.trim(),
       type: type as any,
-      value: parsedValue,
+      value: calculatedValue,
       quantity: parsedQty,
       purchase_price: parsedCost,
-      workspace_id: activeWorkspace ? (isShared ? activeWorkspace.id : null) : null
+      workspace_id: activeWorkspace ? (isShared ? activeWorkspace.id : null) : null,
+      auto_track: autoTrack,
+      tracking_symbol: autoTrack ? trackingSymbol : null
     };
 
     let result;
@@ -561,12 +938,12 @@ export const NetWorth: React.FC = () => {
 
               {/* Refresh button with rotate transition */}
               <button
-                onClick={() => fetchRates(true)}
-                disabled={isRefreshing}
+                onClick={handleRefreshAll}
+                disabled={isRefreshing || isSyncingPrices}
                 className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl transition-all duration-200 border border-slate-200/30 dark:border-slate-800/50 bg-white dark:bg-slate-900 shadow-sm flex items-center justify-center cursor-pointer hover:scale-105 disabled:opacity-50 active:scale-95 shrink-0"
                 title={t.refreshRatesTooltip}
               >
-                <RefreshCw size={13} className={`${isRefreshing ? 'animate-spin text-brand-500' : 'text-slate-400'}`} />
+                <RefreshCw size={13} className={`${(isRefreshing || isSyncingPrices) ? 'animate-spin text-brand-500' : 'text-slate-400'}`} />
               </button>
             </div>
 
@@ -834,18 +1211,81 @@ export const NetWorth: React.FC = () => {
                             {getAssetIcon(asset.type)}
                           </div>
                           <div className="flex flex-col">
-                            <span className="font-bold text-slate-800 dark:text-white">{asset.name}</span>
-                            {activeWorkspace && (
-                              <span className={`text-[8px] font-extrabold px-1.5 py-0.2 rounded-md uppercase tracking-wider w-max mt-1 ${
-                                !asset.workspace_id 
-                                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-505 dark:text-slate-400' 
-                                  : 'bg-indigo-500/10 text-indigo-650 dark:text-indigo-400'
-                              }`}>
-                                {!asset.workspace_id 
-                                  ? (lang === 'tr' ? '🔒 Kişisel (Gizli)' : '🔒 Private (Hidden)') 
-                                  : (lang === 'tr' ? '👥 Ortak (Shared)' : '👥 Shared')}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-slate-800 dark:text-white">{asset.name}</span>
+                              {asset.auto_track && asset.tracking_symbol && asset.type !== 'stocks' && (
+                                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 uppercase tracking-wide border border-slate-200/20 dark:border-slate-800/30">
+                                  {asset.tracking_symbol}
+                                </span>
+                              )}
+                            </div>
+                            {asset.auto_track && asset.tracking_symbol && asset.type !== 'stocks' && (
+                              <span className="text-[10px] text-slate-400 dark:text-slate-550 font-semibold mt-0.5">
+                                {lang === 'tr' ? 'Canlı Fiyat: ' : 'Live Price: '} 
+                                {(() => {
+                                  const symbol = asset.tracking_symbol!;
+                                  const livePrice = livePrices[symbol] || 0;
+                                  const natCur = getAssetNaturalCurrency(asset);
+                                  return livePrice > 0 
+                                    ? formatCurrency(livePrice, natCur)
+                                    : (lang === 'tr' ? 'Yükleniyor...' : 'Loading...');
+                                })()}
                               </span>
                             )}
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                              {asset.auto_track && asset.type !== 'stocks' && (
+                                (() => {
+                                  const symbol = asset.tracking_symbol!;
+                                  const livePrice = livePrices[symbol] || 0;
+                                  if (livePrice <= 0) {
+                                    return (
+                                      <span className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-md border border-slate-200/20 dark:border-slate-800/30">
+                                        <span className="w-1 h-1 bg-slate-400 dark:bg-slate-500 rounded-full animate-pulse shrink-0" />
+                                        <span>{lang === 'tr' ? 'Bağlanıyor...' : 'Connecting...'}</span>
+                                      </span>
+                                    );
+                                  }
+                                  const cache = getPriceCache();
+                                  const cachedEntry = cache[symbol];
+                                  const isRecent = cachedEntry && (Date.now() - cachedEntry.timestamp < 5 * 60 * 1000);
+                                  return (
+                                    <span 
+                                      className={`inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border ${
+                                        isRecent
+                                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/10'
+                                          : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/10'
+                                      }`}
+                                      title={cachedEntry ? (lang === 'tr' 
+                                        ? `Son Güncelleme: ${new Date(cachedEntry.timestamp).toLocaleTimeString()} (Önbellek süresi: 24 Saat)`
+                                        : `Last Updated: ${new Date(cachedEntry.timestamp).toLocaleTimeString()} (Cache duration: 24h)`) : ''}
+                                    >
+                                      {isRecent ? (
+                                        <>
+                                          <span className="w-1 h-1 bg-emerald-500 dark:bg-emerald-400 rounded-full animate-ping shrink-0" />
+                                          <span>{lang === 'tr' ? 'Canlı' : 'Live'}</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full shrink-0" />
+                                          <span>{lang === 'tr' ? 'Önbellek' : 'Cached'}</span>
+                                        </>
+                                      )}
+                                    </span>
+                                  );
+                                })()
+                              )}
+                              {activeWorkspace && (
+                                <span className={`text-[8px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider w-max ${
+                                  !asset.workspace_id 
+                                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400' 
+                                    : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/10'
+                                }`}>
+                                  {!asset.workspace_id 
+                                    ? (lang === 'tr' ? '🔒 Kişisel' : '🔒 Private') 
+                                    : (lang === 'tr' ? '👥 Ortak' : '👥 Shared')}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -878,7 +1318,7 @@ export const NetWorth: React.FC = () => {
                       {/* Purchase Price */}
                       <td className="py-4 px-6 text-xs font-semibold text-slate-700 dark:text-slate-300 text-right">
                         {asset.purchase_price ? (
-                          <span>{formatCurrency(asset.purchase_price * rateMultiplier, valuationCurrency)}</span>
+                          <span>{formatCurrency(asset.purchase_price, getAssetNaturalCurrency(asset))}</span>
                         ) : (
                           <span className="text-slate-400 font-normal">—</span>
                         )}
@@ -897,7 +1337,11 @@ export const NetWorth: React.FC = () => {
 
                       {/* Total Value */}
                       <td className="py-4 px-6 text-xs font-black text-slate-800 dark:text-white text-right">
-                        {formatCurrency(asset.value * rateMultiplier, valuationCurrency)}
+                        {(() => {
+                          const natCur = getAssetNaturalCurrency(asset);
+                          const valInValuationCur = convertCurrency(asset.value, natCur, valuationCurrency);
+                          return formatCurrency(valInValuationCur, valuationCurrency);
+                        })()}
                       </td>
 
                       {/* Actions */}
@@ -990,11 +1434,91 @@ export const NetWorth: React.FC = () => {
                 <CustomSelect
                   options={assetTypeOptions}
                   value={type}
-                  onChange={(val) => setType(val)}
+                  onChange={(val) => {
+                    setType(val);
+                    // Disable auto-track if the class does not support it
+                    const supports = val === 'precious_metals' || val === 'crypto';
+                    if (!supports) {
+                      setAutoTrack(false);
+                      setTrackingSymbol('');
+                    }
+                  }}
                   placeholder={lang === 'tr' ? 'Sınıf Seçiniz...' : 'Select Asset Class...'}
                   required
                 />
               </div>
+
+              {/* Canlı Takip Switch (Sadece desteklenen türler için) */}
+              {(type === 'precious_metals' || type === 'crypto') && (
+                <div className="p-3.5 bg-indigo-50/20 dark:bg-indigo-950/10 rounded-2xl border border-indigo-500/10 dark:border-indigo-500/5 flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                      {t.autoTrack}
+                    </span>
+                    <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 block leading-relaxed">
+                      {t.autoTrackDesc}
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                    <input 
+                      type="checkbox" 
+                      checked={autoTrack} 
+                      onChange={(e) => {
+                        setAutoTrack(e.target.checked);
+                        if (e.target.checked) {
+                          if (type === 'precious_metals') setTrackingSymbol('GRA');
+                          else if (type === 'crypto') setTrackingSymbol('bitcoin');
+                          else setTrackingSymbol('');
+                        } else {
+                          setTrackingSymbol('');
+                        }
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-brand-500"></div>
+                  </label>
+                </div>
+              )}
+
+              {/* Canlı Takip Varlık Seçimi */}
+              {autoTrack && (type === 'precious_metals' || type === 'crypto') && (
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/20 rounded-2xl border border-slate-100 dark:border-slate-800/40 animate-in slide-in-from-top-2 duration-150">
+                  <label className="text-[10px] uppercase font-black text-slate-400 dark:text-slate-550 block mb-1.5 pl-0.5">
+                    {t.trackingSymbolLabel} *
+                  </label>
+                  {type === 'precious_metals' && (
+                    <select
+                      value={trackingSymbol}
+                      onChange={(e) => setTrackingSymbol(e.target.value)}
+                      className="premium-input text-sm font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full"
+                    >
+                      <option value="GRA">{lang === 'tr' ? 'Gram Altın' : 'Gram Gold'}</option>
+                      <option value="CEYREKALTIN">{lang === 'tr' ? 'Çeyrek Altın' : 'Quarter Gold'}</option>
+                      <option value="YARIMALTIN">{lang === 'tr' ? 'Yarım Altın' : 'Half Gold'}</option>
+                      <option value="TAMALTIN">{lang === 'tr' ? 'Tam Altın' : 'Full Gold'}</option>
+                      <option value="CUMHURIYETALTINI">{lang === 'tr' ? 'Cumhuriyet Altını' : 'Republic Gold'}</option>
+                      <option value="ATAALTIN">{lang === 'tr' ? 'Ata Altın' : 'Ata Gold'}</option>
+                      <option value="GUMUS">{lang === 'tr' ? 'Gümüş' : 'Silver'}</option>
+                      <option value="GPL">{lang === 'tr' ? 'Platin' : 'Platinum'}</option>
+                    </select>
+                  )}
+                  {type === 'crypto' && (
+                    <select
+                      value={trackingSymbol}
+                      onChange={(e) => setTrackingSymbol(e.target.value)}
+                      className="premium-input text-sm font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full"
+                    >
+                      <option value="bitcoin">Bitcoin (BTC)</option>
+                      <option value="ethereum">Ethereum (ETH)</option>
+                      <option value="solana">Solana (SOL)</option>
+                      <option value="binancecoin">BNB (BNB)</option>
+                      <option value="ripple">Ripple (XRP)</option>
+                      <option value="cardano">Cardano (ADA)</option>
+                      <option value="dogecoin">Dogecoin (DOGE)</option>
+                    </select>
+                  )}
+                </div>
+              )}
 
               {/* Asset Value */}
               <div>
@@ -1004,11 +1528,12 @@ export const NetWorth: React.FC = () => {
                 <input
                   type="number"
                   step="any"
-                  value={value}
+                  value={autoTrack ? '' : value}
                   onChange={(e) => setValue(e.target.value)}
-                  placeholder="0.00"
-                  className="premium-input text-sm font-semibold"
-                  required
+                  placeholder={autoTrack ? t.autoTrackValueDisabled : "0.00"}
+                  className={`premium-input text-sm font-semibold ${autoTrack ? 'bg-slate-100/50 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 cursor-not-allowed border-dashed opacity-75' : ''}`}
+                  disabled={autoTrack}
+                  required={!autoTrack}
                 />
               </div>
 
@@ -1018,7 +1543,7 @@ export const NetWorth: React.FC = () => {
                 {/* Quantity */}
                 <div>
                   <label className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block mb-1.5">
-                    {t.quantity}
+                    {t.quantity} {autoTrack && '*'}
                   </label>
                   <input
                     type="number"
@@ -1027,13 +1552,14 @@ export const NetWorth: React.FC = () => {
                     onChange={(e) => setQuantity(e.target.value)}
                     placeholder="e.g. 0.25, 50"
                     className="premium-input text-xs font-semibold"
+                    required={autoTrack}
                   />
                 </div>
 
                 {/* Purchase Cost per unit */}
                 <div>
                   <label className="text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 block mb-1.5">
-                    {t.purchasePrice} ({currency})
+                    {t.purchasePrice} ({getAssetNaturalCurrency({ auto_track: autoTrack, tracking_symbol: trackingSymbol, type })})
                   </label>
                   <input
                     type="number"

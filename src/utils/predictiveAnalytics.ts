@@ -92,7 +92,7 @@ export function calculateSpendingForecast(
     trendPercentage = ((projectedExpense - historicalAverage) / historicalAverage) * 100;
   }
 
-  let message = '';
+  let message: string;
   if (isCurrentMonth) {
     if (isSafe) {
       message = trendPercentage > 10 

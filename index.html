@@ -6,15 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <!-- SEO Meta Tags -->
-    <title>MoneyMate | Kişisel Finans Takip ve Analiz Platformu</title>
-    <meta name="description" content="Gelir, gider, bütçe ve harcama alışkanlıklarınızı modern ve responsive gösterge paneli üzerinden kolayca takip edin. Kişisel finans koçunuz MoneyMate." />
+    <title>feniqo | Kişisel Finans ve Varlık Yönetimi</title>
+    <meta name="description" content="Gelir, gider, bütçe ve harcama alışkanlıklarınızı modern ve responsive gösterge paneli üzerinden kolayca takip edin. Kişisel finans ve varlık yönetim koçunuz feniqo." />
     
     <!-- PWA & Mobile Meta Tags -->
     <meta name="theme-color" content="#0f172a" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="MoneyMate" />
+    <meta name="apple-mobile-web-app-title" content="feniqo" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     
     <!-- Google Fonts - Inter -->
@@ -25,9 +25,9 @@
     <!-- Theme and Color Theme Synchronous Initialization -->
     <script>
       (function() {
-        const colorTheme = localStorage.getItem('moneymate_color_theme') || 'emerald';
+        const colorTheme = localStorage.getItem('feniqo_color_theme') || localStorage.getItem('moneymate_color_theme') || 'emerald';
         document.documentElement.classList.add('theme-' + colorTheme);
-        const appliedTheme = localStorage.getItem('moneymate_applied_theme');
+        const appliedTheme = localStorage.getItem('feniqo_applied_theme') || localStorage.getItem('moneymate_applied_theme');
         if (appliedTheme === 'dark') {
           document.documentElement.classList.add('dark');
         }

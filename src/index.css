@@ -209,7 +209,7 @@ html.theme-sunset.dark body,
 html.theme-sunset.dark .bg-slate-950,
 html.theme-sunset.dark .dark\:bg-slate-950,
 html.theme-sunset.dark .min-h-screen {
-  background-color: #0f0904 !important; /* Elegant Warm Luxury Chocolate / Golden Black */
+  background-color: #211814 !important; /* Lighter Warm Golden Black */
   background-image: radial-gradient(at 0% 0%, rgba(186, 117, 23, 0.09) 0px, transparent 50%),
                     radial-gradient(at 100% 100%, rgba(212, 83, 126, 0.09) 0px, transparent 50%) !important;
   background-attachment: fixed;
@@ -226,8 +226,8 @@ html.theme-sunset.dark .bg-slate-900,
 html.theme-sunset.dark .dark\:bg-slate-900,
 html.theme-sunset.dark .glass-panel,
 html.theme-sunset.dark aside {
-  background-color: #171007 !important; /* Deep Golden Dark Chocolate Card */
-  border-color: rgba(133, 79, 11, 0.25) !important;
+  background-color: #2e231c !important; /* Lighter Golden Dark Chocolate Card */
+  border-color: rgba(133, 79, 11, 0.3) !important;
 }
 
 /* Light mode borders */
@@ -244,6 +244,17 @@ html.theme-sunset.dark .border-r {
   border-color: rgba(133, 79, 11, 0.2) !important;
 }
 
+/* Sunset Scrollbars */
+html.theme-sunset.dark ::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+html.theme-sunset.dark ::-webkit-scrollbar-thumb {
+  background-color: rgba(186, 117, 23, 0.3);
+}
+html.theme-sunset.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(186, 117, 23, 0.5);
+}
+
 /* 2. CESUR GÜL (Bold Rose) OVERRIDES */
 /* Immersive Page Body Backgrounds */
 html.theme-rose body,
@@ -257,7 +268,7 @@ html.theme-rose.dark body,
 html.theme-rose.dark .bg-slate-950,
 html.theme-rose.dark .dark\:bg-slate-950,
 html.theme-rose.dark .min-h-screen {
-  background-color: #0f0206 !important; /* Deep Crimson Dark Mode Background */
+  background-color: #22151b !important; /* Lighter Crimson Dark Mode Background */
   background-image: radial-gradient(at 0% 0%, rgba(153, 53, 86, 0.1) 0px, transparent 50%),
                     radial-gradient(at 100% 100%, rgba(213, 96, 130, 0.08) 0px, transparent 50%) !important;
   background-attachment: fixed;
@@ -274,8 +285,8 @@ html.theme-rose.dark .bg-slate-900,
 html.theme-rose.dark .dark\:bg-slate-900,
 html.theme-rose.dark .glass-panel,
 html.theme-rose.dark aside {
-  background-color: #18060c !important; /* Deep Burgundy Dark Card */
-  border-color: rgba(114, 36, 62, 0.25) !important;
+  background-color: #2d1e25 !important; /* Lighter Burgundy Dark Card */
+  border-color: rgba(114, 36, 62, 0.3) !important;
 }
 
 /* Light mode borders */
@@ -291,6 +302,17 @@ html.theme-rose.dark .border-r {
   border-color: rgba(114, 36, 62, 0.2) !important;
 }
 
+/* Rose Scrollbars */
+html.theme-rose.dark ::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+html.theme-rose.dark ::-webkit-scrollbar-thumb {
+  background-color: rgba(153, 53, 86, 0.3);
+}
+html.theme-rose.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(153, 53, 86, 0.5);
+}
+
 /* 3. SAKİN MATCHA (Calming Matcha) OVERRIDES */
 /* Immersive Page Body Backgrounds */
 html.theme-ocean body,
@@ -304,7 +326,7 @@ html.theme-ocean.dark body,
 html.theme-ocean.dark .bg-slate-950,
 html.theme-ocean.dark .dark\:bg-slate-950,
 html.theme-ocean.dark .min-h-screen {
-  background-color: #0c1612 !important; /* Deep Moss-Forest Black Background */
+  background-color: #121e18 !important; /* Lighter Moss-Forest Black Background */
   background-image: radial-gradient(at 0% 0%, rgba(77, 119, 94, 0.08) 0px, transparent 50%),
                     radial-gradient(at 100% 100%, rgba(197, 168, 128, 0.06) 0px, transparent 50%) !important;
   background-attachment: fixed;
@@ -321,7 +343,7 @@ html.theme-ocean.dark .bg-slate-900,
 html.theme-ocean.dark .dark\:bg-slate-900,
 html.theme-ocean.dark .glass-panel,
 html.theme-ocean.dark aside {
-  background-color: #14211c !important; /* Calm Sage-Charcoal Card */
+  background-color: #1a2b23 !important; /* Lighter Sage-Charcoal Card */
   border-color: rgba(77, 119, 94, 0.25) !important;
 }
 
@@ -337,6 +359,17 @@ html.theme-ocean.dark .border-slate-800\/60,
 html.theme-ocean.dark .dark\:border-slate-800\/60,
 html.theme-ocean.dark .border-r {
   border-color: rgba(77, 119, 94, 0.2) !important;
+}
+
+/* Matcha Scrollbars */
+html.theme-ocean.dark ::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+html.theme-ocean.dark ::-webkit-scrollbar-thumb {
+  background-color: rgba(77, 119, 94, 0.3);
+}
+html.theme-ocean.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(77, 119, 94, 0.5);
 }
 
 /* Notification Bell Shaking Keyframes */

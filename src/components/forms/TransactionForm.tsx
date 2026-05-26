@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, FileText, CheckCircle2, Loader, ArrowUpDown, CreditCard, Globe, RefreshCw, Repeat, Camera, Image as ImageIcon, X, Users, User, Wallet } from 'lucide-react';
 import * as Icons from 'lucide-react';
-import { useData } from '../../context/DataContext';
+import { useData, addMonthsToDate } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import { getCurrencySymbol } from '../../utils/formatters';
 import type { Transaction } from '../../db/types';
@@ -47,6 +47,18 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [isRecurring, setIsRecurring] = useState(false);
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
   const [endDate, setEndDate] = useState('');
+
+  // Installment States
+  const [isInstallment, setIsInstallment] = useState(false);
+  const [installmentCount, setInstallmentCount] = useState(3);
+  const [customInstallment, setCustomInstallment] = useState('');
+
+  // Reset installment states if payment method is not credit card
+  useEffect(() => {
+    if (paymentMethod !== 'Kredi Kartı') {
+      setIsInstallment(false);
+    }
+  }, [paymentMethod]);
 
   // Receipt & OCR States
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -204,6 +216,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         payment_method: paymentMethod,
         receipt_url: finalReceiptUrl || null,
         user_id: activeWorkspace ? spenderId : (user?.id || ''),
+        is_installment: isInstallment,
+        installment_count: installmentCount,
       };
 
       let res;
@@ -528,6 +542,94 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             💡 {isEn ? 'Add hashtag labels like #work, #grocery directly in your description' : 'Etiket eklemek için açıklamaya #iş, #market gibi etiketler yazabilirsiniz'}
           </p>
         </div>
+
+        {/* Taksitli Alışveriş Seçeneği (Sadece Yeni Harcamalarda ve Kredi Kartı Seçildiğinde) */}
+        {!transactionToEdit && paymentMethod === 'Kredi Kartı' && (
+          <div className="md:col-span-2 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200 shadow-inner">
+            <div className="flex items-center justify-between">
+              <label className="flex items-center space-x-2.5 cursor-pointer group">
+                <div className={`w-9 h-5 rounded-full transition-colors relative flex items-center ${isInstallment ? 'bg-brand-500' : 'bg-slate-200 dark:bg-slate-700'}`}>
+                  <div className={`w-3.5 h-3.5 bg-white rounded-full shadow-sm absolute transition-transform ${isInstallment ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+                </div>
+                <input 
+                  type="checkbox" 
+                  className="sr-only" 
+                  checked={isInstallment}
+                  onChange={(e) => setIsInstallment(e.target.checked)} 
+                />
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                  Taksitli Alışveriş Girişi Yap
+                </span>
+              </label>
+            </div>
+
+            {isInstallment && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
+                    Taksit Sayısı
+                  </label>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {[2, 3, 6, 9, 12].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => {
+                          setInstallmentCount(num);
+                          setCustomInstallment('');
+                        }}
+                        className={`py-2 px-3 rounded-lg border font-bold text-xs transition-all ${
+                          installmentCount === num && !customInstallment
+                            ? 'bg-brand-500 border-brand-500 text-white shadow-sm scale-[1.03]'
+                            : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        {num} Taksit
+                      </button>
+                    ))}
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="2"
+                        max="60"
+                        placeholder="Özel"
+                        value={customInstallment}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCustomInstallment(val);
+                          const parsed = parseInt(val, 10);
+                          if (!isNaN(parsed) && parsed >= 2) {
+                            setInstallmentCount(parsed);
+                          }
+                        }}
+                        className={`w-full py-2 px-1 text-center rounded-lg border font-bold text-xs transition-all focus:outline-none focus:ring-1 focus:ring-brand-500 ${
+                          customInstallment
+                            ? 'bg-brand-500 border-brand-500 text-white placeholder-white/80 shadow-sm'
+                            : 'border-slate-200 dark:border-slate-700 bg-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {amount && parseFloat(amount) > 0 && (
+                  <div className="p-3 bg-brand-50/50 dark:bg-brand-900/10 rounded-xl border border-brand-100 dark:border-brand-900/30 flex items-center justify-between text-xs">
+                    <div className="space-y-1">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">Aylık Taksit Tutarı:</span>
+                      <div className="text-base font-bold text-brand-600 dark:text-brand-400">
+                        {getCurrencySymbol(user?.currency || 'TRY')} {(parseFloat(amount) / installmentCount).toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="text-right space-y-1 text-[10px] text-slate-400 dark:text-slate-500 font-semibold pl-2 border-l border-slate-200 dark:border-slate-800">
+                      <div>İlk Taksit: {date}</div>
+                      <div>Son Taksit: {addMonthsToDate(date, installmentCount - 1)}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Spender Selection (Workspace only) */}

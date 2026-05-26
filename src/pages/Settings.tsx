@@ -6,6 +6,7 @@ import { ConfirmModal } from '../components/common/ConfirmModal';
 import { formatCurrency } from '../utils/formatters';
 import { CustomSelect } from '../components/common/CustomSelect';
 import { usePWA } from '../utils/pwaStore';
+import { OpenBankingPanel } from '../components/banking/OpenBankingPanel';
 
 const translations = {
   tr: {
@@ -1066,6 +1067,9 @@ export const Settings: React.FC = () => {
             </div>
 
           </div>
+
+          {/* OPEN BANKING & AUTOMATED ACCOUNT SYNC */}
+          <OpenBankingPanel />
 
           {/* AI COACH SECTION */}
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-4">

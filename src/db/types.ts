@@ -55,6 +55,9 @@ export interface Transaction {
   workspace_id?: string | null;
   created_at?: string;
   tags?: string[]; // Ayrıştırılmış hashtag'ler (Örn: ['iş', 'kişisel'])
+  installment_number?: number;
+  total_installments?: number;
+  installment_group_id?: string;
 }
 
 export interface Budget {
@@ -132,6 +135,8 @@ export interface Asset {
   purchase_price?: number; // Optional purchase price per unit
   workspace_id?: string | null;
   created_at?: string;
+  auto_track?: boolean;
+  tracking_symbol?: string | null;
 }
 
 

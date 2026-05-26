@@ -20,6 +20,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-expense-egitim', user_id: null, name: 'Eğitim', type: 'expense', color: '#8B5CF6', icon: 'BookOpen', is_default: true },
   { id: 'cat-expense-saglik', user_id: null, name: 'Sağlık', type: 'expense', color: '#EF4444', icon: 'HeartPulse', is_default: true },
   { id: 'cat-expense-abonelik', user_id: null, name: 'Abonelik', type: 'expense', color: '#6366F1', icon: 'CreditCard', is_default: true },
+  { id: 'cat-expense-tasarruf', user_id: null, name: 'Tasarruf & Yatırım', type: 'expense', color: '#10B981', icon: 'TrendingUp', is_default: true },
   { id: 'cat-expense-diger', user_id: null, name: 'Diğer Gider', type: 'expense', color: '#6B7280', icon: 'HelpCircle', is_default: true }
 ];
 

@@ -11,6 +11,19 @@ export const extractHashtags = (text?: string): string[] => {
   return Array.from(new Set(matches.map(tag => tag.substring(1).toLowerCase())));
 };
 
+export const addMonthsToDate = (dateStr: string, monthsToAdd: number): string => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const targetDate = new Date(year, month - 1 + monthsToAdd, 1);
+  const lastDayOfTargetMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0).getDate();
+  const targetDay = Math.min(day, lastDayOfTargetMonth);
+  
+  const y = targetDate.getFullYear();
+  const m = String(targetDate.getMonth() + 1).padStart(2, '0');
+  const d = String(targetDay).padStart(2, '0');
+  
+  return `${y}-${m}-${d}`;
+};
+
 interface DataContextType {
   transactions: Transaction[];
   categories: Category[];
@@ -28,9 +41,13 @@ interface DataContextType {
   setActiveWorkspace: (workspaceId: string | null) => Promise<void>;
   
   // Transaction CRUD
-  addTransaction: (tx: Omit<Transaction, 'id' | 'user_id' | 'created_at'> & { user_id?: string }) => Promise<{ success: boolean; error?: string }>;
+  addTransaction: (tx: Omit<Transaction, 'id' | 'user_id' | 'created_at'> & { 
+    user_id?: string;
+    is_installment?: boolean;
+    installment_count?: number;
+  }) => Promise<{ success: boolean; error?: string }>;
   updateTransaction: (id: string, tx: Partial<Transaction>) => Promise<{ success: boolean; error?: string }>;
-  deleteTransaction: (id: string) => Promise<{ success: boolean; error?: string }>;
+  deleteTransaction: (id: string, installmentDeleteMode?: 'one' | 'future' | 'all') => Promise<{ success: boolean; error?: string }>;
   
   // Category CRUD
   addCategory: (cat: Omit<Category, 'id' | 'user_id' | 'is_default' | 'created_at'>) => Promise<{ success: boolean; error?: string }>;
@@ -172,11 +189,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             role: perspectiveRole as 'admin' | 'contributor' | 'viewer'
           }
         ];
-        // Buse (demo partner) should ONLY be in the family budget workspace!
+        // Sifa (demo partner) should ONLY be in the family budget workspace!
         if (currentActive.id === 'demo-workspace-family') {
           members.push({ 
             id: 'demo-partner-456', 
-            email: 'buse@moneymate.com', 
+            email: 'sifa@moneymate.com', 
             currency: 'TRY', 
             theme: 'system', 
             lang: 'tr', 
@@ -195,6 +212,25 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentCats = DEFAULT_CATEGORIES;
       } else {
         currentCats = JSON.parse(storedCats);
+        // Akıllı Göç/Birleştirme: DEFAULT_CATEGORIES içinde olup yerel bellekte eksik olan yeni kategorileri (örn: Tasarruf & Yatırım) otomatik ekler.
+        let updated = false;
+        DEFAULT_CATEGORIES.forEach(defCat => {
+          if (!currentCats.some(c => c.id === defCat.id)) {
+            currentCats.push(defCat);
+            updated = true;
+          }
+        });
+        if (updated) {
+          localStorage.setItem('moneymate_demo_categories', JSON.stringify(currentCats));
+        }
+        
+        // "Diğer Gider" / "Diğer Gelir" öğelerinin her zaman listenin en altında olmasını garanti et (Yer Değiştirme)
+        currentCats.sort((a, b) => {
+          if (a.id.includes('diger') || a.id.includes('other')) return 1;
+          if (b.id.includes('diger') || b.id.includes('other')) return -1;
+          return 0;
+        });
+        localStorage.setItem('moneymate_demo_categories', JSON.stringify(currentCats));
       }
 
       // Transactions
@@ -629,90 +665,133 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // TRANSACTION CRUD
   // ==========================================
 
-  const addTransaction = async (tx: Omit<Transaction, 'id' | 'user_id' | 'created_at'> & { user_id?: string }) => {
+  const addTransaction = async (tx: Omit<Transaction, 'id' | 'user_id' | 'created_at'> & { 
+    user_id?: string;
+    is_installment?: boolean;
+    installment_count?: number;
+  }) => {
     if (!user) return { success: false, error: 'Oturum açılmadı.' };
 
-    const parsedTags = extractHashtags(tx.description);
-    const newTx: Transaction = {
-      ...tx,
-      id: isDemo ? `tx-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` : '',
-      user_id: tx.user_id || user.id,
-      workspace_id: activeWorkspace?.id || null,
-      tags: parsedTags,
-    };
+    const isInstallment = tx.is_installment && tx.installment_count && tx.installment_count > 1;
+    const count = isInstallment ? tx.installment_count! : 1;
+    const groupId = isInstallment ? `inst-group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` : undefined;
+
+    const baseAmount = isInstallment ? Math.floor((tx.amount / count) * 100) / 100 : tx.amount;
+    const lastAmount = isInstallment ? Math.round((tx.amount - (baseAmount * (count - 1))) * 100) / 100 : tx.amount;
+
+    const txsToCreate: Transaction[] = [];
+
+    for (let i = 1; i <= count; i++) {
+      const currentAmount = i === count ? lastAmount : baseAmount;
+      const installmentDate = isInstallment ? addMonthsToDate(tx.transaction_date, i - 1) : tx.transaction_date;
+      const originalDescription = tx.description ? tx.description.trim() : 'Kredi Kartı Alışverişi';
+      const descriptionWithInstallment = isInstallment ? `${originalDescription} (${i}/${count})` : originalDescription;
+      
+      const parsedTags = extractHashtags(descriptionWithInstallment);
+      const newTx: Transaction = {
+        amount: currentAmount,
+        type: tx.type,
+        category_id: tx.category_id,
+        description: descriptionWithInstallment,
+        payment_method: tx.payment_method,
+        transaction_date: installmentDate,
+        receipt_url: tx.receipt_url || null,
+        user_id: tx.user_id || user.id,
+        workspace_id: activeWorkspace?.id || null,
+        tags: parsedTags,
+        installment_number: isInstallment ? i : undefined,
+        total_installments: isInstallment ? count : undefined,
+        installment_group_id: groupId,
+        id: isDemo ? `tx-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}` : '',
+      };
+      txsToCreate.push(newTx);
+    }
 
     if (isDemo) {
       const storedTxs = localStorage.getItem('moneymate_demo_transactions');
       const allTxs: Transaction[] = storedTxs ? JSON.parse(storedTxs) : [];
-      const updatedAll = [newTx, ...allTxs];
+      const updatedAll = [...txsToCreate, ...allTxs];
       localStorage.setItem('moneymate_demo_transactions', JSON.stringify(updatedAll));
       
-      setTransactions([newTx, ...transactions]);
+      setTransactions(prev => [...txsToCreate, ...prev]);
       return { success: true };
     }
 
     if (isSupabaseConfigured && supabase) {
       try {
+        const rowsToInsert = txsToCreate.map(t => ({
+          amount: t.amount,
+          type: t.type,
+          category_id: t.category_id,
+          description: t.description,
+          payment_method: t.payment_method,
+          transaction_date: t.transaction_date,
+          receipt_url: t.receipt_url,
+          user_id: t.user_id,
+          workspace_id: t.workspace_id,
+          installment_number: t.installment_number,
+          total_installments: t.total_installments,
+          installment_group_id: t.installment_group_id
+        }));
+
         const { data, error } = await supabase
           .from('transactions')
-          .insert({
-            amount: newTx.amount,
-            type: newTx.type,
-            category_id: newTx.category_id,
-            description: newTx.description,
-            payment_method: newTx.payment_method,
-            transaction_date: newTx.transaction_date,
-            receipt_url: newTx.receipt_url,
-            user_id: newTx.user_id,
-            workspace_id: newTx.workspace_id,
-          })
-          .select()
-          .single();
+          .insert(rowsToInsert)
+          .select();
 
         if (error) throw error;
 
-        // Save transaction tags
-        if (parsedTags.length > 0) {
-          for (const tagName of parsedTags) {
-            let tagId = '';
-            // Check if tag exists
-            const { data: existingTag } = await supabase
-              .from('tags')
-              .select('id')
-              .eq('name', tagName)
-              .eq('user_id', newTx.user_id)
-              .maybeSingle();
+        if (data) {
+          // Process tags for each newly inserted transaction
+          for (const inserted of data) {
+            const parsedTags = extractHashtags(inserted.description);
+            if (parsedTags.length > 0) {
+              for (const tagName of parsedTags) {
+                let tagId = '';
+                // Check if tag exists
+                const { data: existingTag } = await supabase
+                  .from('tags')
+                  .select('id')
+                  .eq('name', tagName)
+                  .eq('user_id', inserted.user_id)
+                  .maybeSingle();
 
-            if (existingTag) {
-              tagId = existingTag.id;
-            } else {
-              // Insert tag
-              const { data: newTag } = await supabase
-                .from('tags')
-                .insert({
-                  name: tagName,
-                  user_id: newTx.user_id,
-                  workspace_id: newTx.workspace_id
-                })
-                .select('id')
-                .single();
-              if (newTag) tagId = newTag.id;
-            }
+                if (existingTag) {
+                  tagId = existingTag.id;
+                } else {
+                  // Insert tag
+                  const { data: newTag } = await supabase
+                    .from('tags')
+                    .insert({
+                      name: tagName,
+                      user_id: inserted.user_id,
+                      workspace_id: inserted.workspace_id
+                    })
+                    .select('id')
+                    .single();
+                  if (newTag) tagId = newTag.id;
+                }
 
-            if (tagId) {
-              await supabase
-                .from('transaction_tags')
-                .insert({
-                  transaction_id: data.id,
-                  tag_id: tagId
-                });
+                if (tagId) {
+                  await supabase
+                    .from('transaction_tags')
+                    .insert({
+                      transaction_id: inserted.id,
+                      tag_id: tagId
+                    });
+                }
+              }
             }
           }
-        }
 
-        const finalTx = { ...data, tags: parsedTags };
-        setTransactions([finalTx, ...transactions]);
-        return { success: true };
+          const mappedTxs = data.map(inserted => ({
+            ...inserted,
+            tags: extractHashtags(inserted.description)
+          }));
+
+          setTransactions(prev => [...mappedTxs, ...prev].sort((a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()));
+          return { success: true };
+        }
       } catch (error: any) {
         return { success: false, error: error.message || 'İşlem eklenemedi.' };
       }
@@ -822,22 +901,58 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: false, error: 'Sunucu hatası.' };
   };
 
-  const deleteTransaction = async (id: string) => {
+  const deleteTransaction = async (id: string, installmentDeleteMode?: 'one' | 'future' | 'all') => {
+    const txToDelete = transactions.find(t => t.id === id);
+    const groupId = txToDelete?.installment_group_id;
+    const txDate = txToDelete?.transaction_date;
+
     if (isDemo) {
       const storedTxs = localStorage.getItem('moneymate_demo_transactions');
       const allTxs: Transaction[] = storedTxs ? JSON.parse(storedTxs) : [];
-      const updatedAll = allTxs.filter(t => t.id !== id);
+      let updatedAll: Transaction[] = [];
+
+      if (groupId && installmentDeleteMode === 'all') {
+        updatedAll = allTxs.filter(t => t.installment_group_id !== groupId);
+      } else if (groupId && installmentDeleteMode === 'future' && txDate) {
+        updatedAll = allTxs.filter(t => !(t.installment_group_id === groupId && t.transaction_date >= txDate));
+      } else {
+        updatedAll = allTxs.filter(t => t.id !== id);
+      }
+
       localStorage.setItem('moneymate_demo_transactions', JSON.stringify(updatedAll));
       
-      setTransactions(transactions.filter(t => t.id !== id));
+      if (groupId && installmentDeleteMode === 'all') {
+        setTransactions(transactions.filter(t => t.installment_group_id !== groupId));
+      } else if (groupId && installmentDeleteMode === 'future' && txDate) {
+        setTransactions(transactions.filter(t => !(t.installment_group_id === groupId && t.transaction_date >= txDate)));
+      } else {
+        setTransactions(transactions.filter(t => t.id !== id));
+      }
       return { success: true };
     }
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const { error } = await supabase.from('transactions').delete().eq('id', id);
+        let query = supabase.from('transactions').delete();
+        
+        if (groupId && installmentDeleteMode === 'all') {
+          query = query.eq('installment_group_id', groupId);
+        } else if (groupId && installmentDeleteMode === 'future' && txDate) {
+          query = query.eq('installment_group_id', groupId).gte('transaction_date', txDate);
+        } else {
+          query = query.eq('id', id);
+        }
+
+        const { error } = await query;
         if (error) throw error;
-        setTransactions(transactions.filter(t => t.id !== id));
+        
+        if (groupId && installmentDeleteMode === 'all') {
+          setTransactions(transactions.filter(t => t.installment_group_id !== groupId));
+        } else if (groupId && installmentDeleteMode === 'future' && txDate) {
+          setTransactions(transactions.filter(t => !(t.installment_group_id === groupId && t.transaction_date >= txDate)));
+        } else {
+          setTransactions(transactions.filter(t => t.id !== id));
+        }
         return { success: true };
       } catch (error: any) {
         return { success: false, error: error.message || 'İşlem silinemedi.' };
@@ -1588,9 +1703,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     if (isDemo) {
-      const updated = [newAsset, ...assets];
-      localStorage.setItem('moneymate_demo_assets', JSON.stringify(updated));
-      setAssets(updated);
+      const stored = localStorage.getItem('moneymate_demo_assets');
+      const allAssets: Asset[] = stored ? JSON.parse(stored) : generateDemoAssets(user.id);
+      const updatedAll = [newAsset, ...allAssets.filter(a => a.id !== newAsset.id)];
+      localStorage.setItem('moneymate_demo_assets', JSON.stringify(updatedAll));
+      
+      const updatedFiltered = [newAsset, ...assets];
+      setAssets(updatedFiltered);
       return { success: true };
     }
 
@@ -1606,6 +1725,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             purchase_price: newAsset.purchase_price,
             user_id: user.id,
             workspace_id: newAsset.workspace_id,
+            auto_track: newAsset.auto_track,
+            tracking_symbol: newAsset.tracking_symbol,
           })
           .select()
           .single();
@@ -1622,9 +1743,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateAsset = async (id: string, updatedFields: Partial<Asset>) => {
     if (isDemo) {
-      const updated = assets.map(a => (a.id === id ? { ...a, ...updatedFields } : a));
-      localStorage.setItem('moneymate_demo_assets', JSON.stringify(updated));
-      setAssets(updated);
+      const stored = localStorage.getItem('moneymate_demo_assets');
+      const allAssets: Asset[] = stored ? JSON.parse(stored) : [];
+      const updatedAll = allAssets.map(a => (a.id === id ? { ...a, ...updatedFields } : a));
+      localStorage.setItem('moneymate_demo_assets', JSON.stringify(updatedAll));
+
+      const updatedFiltered = assets.map(a => (a.id === id ? { ...a, ...updatedFields } : a));
+      setAssets(updatedFiltered);
       return { success: true };
     }
 
@@ -1639,6 +1764,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         if (updatedFields.workspace_id !== undefined) {
           updateData.workspace_id = updatedFields.workspace_id;
+        }
+        if (updatedFields.auto_track !== undefined) {
+          updateData.auto_track = updatedFields.auto_track;
+        }
+        if (updatedFields.tracking_symbol !== undefined) {
+          updateData.tracking_symbol = updatedFields.tracking_symbol;
         }
 
         const { data, error } = await supabase
@@ -1660,9 +1791,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteAsset = async (id: string) => {
     if (isDemo) {
-      const updated = assets.filter(a => a.id !== id);
-      localStorage.setItem('moneymate_demo_assets', JSON.stringify(updated));
-      setAssets(updated);
+      const stored = localStorage.getItem('moneymate_demo_assets');
+      const allAssets: Asset[] = stored ? JSON.parse(stored) : [];
+      const updatedAll = allAssets.filter(a => a.id !== id);
+      localStorage.setItem('moneymate_demo_assets', JSON.stringify(updatedAll));
+
+      const updatedFiltered = assets.filter(a => a.id !== id);
+      setAssets(updatedFiltered);
       return { success: true };
     }
 

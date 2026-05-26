@@ -43,8 +43,6 @@ export const Workspace: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  if (!user) return null;
-
   // Language dictionary
   const t = {
     title: isEn ? 'Shared Budget & Split' : 'Ortak Bütçe & Bölüşüm',
@@ -89,8 +87,8 @@ export const Workspace: React.FC = () => {
     settleSuccess: isEn ? 'Balances settled successfully!' : 'Ödeşme kaydı başarıyla oluşturuldu!',
     settleTxDesc: isEn ? 'Workspace Settlement Payment' : 'Ortak Bütçe Ödeşme Kapatması',
     demoNotice: isEn 
-      ? 'Demo Mode active. Seeding mock partner "buse@moneymate.com" to demonstrate split.'
-      : 'Demo Modu aktif. Bölüşümü göstermek için sahte partner "buse@moneymate.com" harcamaları eklendi.'
+      ? 'Demo Mode active. Seeding mock partner "sifa@moneymate.com" to demonstrate split.'
+      : 'Demo Modu aktif. Bölüşümü göstermek için sahte partner "sifa@moneymate.com" harcamaları eklendi.'
   };
 
   const handleCopyCode = (code: string) => {
@@ -153,6 +151,8 @@ export const Workspace: React.FC = () => {
 
   // --- CALCULATION LOGIC FOR SPLIT EXPENSES ---
   const memberExpenses = React.useMemo(() => {
+    if (!user) return {};
+    
     // 1. Filter only expenses in this workspace
     const workspaceExpenses = transactions.filter(t => t.type === 'expense');
     
@@ -172,9 +172,22 @@ export const Workspace: React.FC = () => {
     });
 
     return spentMap;
-  }, [transactions, workspaceMembers, user.id]);
+  }, [transactions, workspaceMembers, user]);
 
   const splitMetrics = React.useMemo(() => {
+    if (!user) {
+      return {
+        totalSpent: 0,
+        share: 0,
+        balances: [],
+        debtText: '',
+        owesAmount: 0,
+        debtorId: '',
+        creditorId: '',
+        partnerEmail: ''
+      };
+    }
+
     // Total expenses of the workspace
     const totalSpent = Object.values(memberExpenses).reduce((sum, amt) => sum + amt, 0);
     
@@ -267,7 +280,7 @@ export const Workspace: React.FC = () => {
       creditorId,
       partnerEmail
     };
-  }, [memberExpenses, workspaceMembers, user.currency, user.id]);
+  }, [memberExpenses, workspaceMembers, user, t.owesUser, t.userOwes]);
 
   const handleSettleDebt = async () => {
     if (splitMetrics.owesAmount <= 0) return;
@@ -298,6 +311,9 @@ export const Workspace: React.FC = () => {
     }
   };
 
+  // --- MOVED EARLY RETURN ---
+  if (!user) return null;
+
   return (
     <div className="space-y-6">
       
@@ -315,16 +331,18 @@ export const Workspace: React.FC = () => {
 
         {/* Workspace Quick Selector in Header */}
         {workspaces.length > 0 && (
-          <div className="flex items-center space-x-2.5 shrink-0 w-48 sm:w-56">
+          <div className="flex items-center justify-end space-x-3 shrink-0">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">
               {isEn ? 'Workspace:' : 'Aktif Havuz:'}
             </span>
-            <WorkspaceSelector
-              workspaces={workspaces}
-              activeWorkspace={activeWorkspace}
-              setActiveWorkspace={setActiveWorkspace}
-              isEn={isEn}
-            />
+            <div className="w-48 sm:w-56">
+              <WorkspaceSelector
+                workspaces={workspaces}
+                activeWorkspace={activeWorkspace}
+                setActiveWorkspace={setActiveWorkspace}
+                isEn={isEn}
+              />
+            </div>
           </div>
         )}
       </div>

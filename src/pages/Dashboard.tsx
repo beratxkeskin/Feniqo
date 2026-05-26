@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import * as Icons from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
+import { useOpenBanking } from '../context/OpenBankingContext';
 import { formatCurrency, calculateSavingsRate, formatMonthName } from '../utils/formatters';
 import { calculateMoneyScore } from '../utils/scoreCalculator';
 import { calculateSpendingForecast } from '../utils/predictiveAnalytics';
@@ -16,6 +17,7 @@ import { MoneyScoreGauge } from '../components/dashboard/MoneyScoreGauge';
 export const Dashboard: React.FC = () => {
   const { transactions, categories, budgets, debts, goals, assets, currentUserRole } = useData();
   const { user } = useAuth();
+  const { connectedBanks, isSyncingAll, syncAllBanks } = useOpenBanking();
   const currency = user?.currency || 'TRY';
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -220,6 +222,39 @@ export const Dashboard: React.FC = () => {
               {isNetWorthVisible ? <Icons.EyeOff size={14} /> : <Icons.Eye size={14} />}
             </button>
           </div>
+
+          {/* Open Banking Status Badge */}
+          {connectedBanks.length > 0 && (
+            <>
+              <div className="hidden md:block h-8 w-px bg-slate-200 dark:bg-slate-800" />
+              <div className="flex items-center space-x-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-2 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group">
+                <a href="#/settings" className="flex items-center space-x-3 cursor-pointer" title="Açık Bankacılık ayarlarını yönet">
+                  <div className="p-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl ring-1 ring-emerald-500/20 group-hover:scale-105 transition-transform duration-200">
+                    <Icons.ShieldCheck size={18} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-1 group-hover:text-emerald-500 transition-colors">
+                      Açık Bankacılık
+                    </p>
+                    <div className="flex items-center space-x-1.5 leading-none">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        {connectedBanks.length} Banka
+                      </span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    </div>
+                  </div>
+                </a>
+                <button 
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); syncAllBanks(); }}
+                  disabled={isSyncingAll}
+                  className="text-slate-400 hover:text-brand-500 dark:hover:text-brand-400 transition-colors p-1 disabled:opacity-50 cursor-pointer"
+                  title="Tümünü Şimdi Güncelle"
+                >
+                  <Icons.RefreshCw size={12} className={isSyncingAll ? 'animate-spin text-brand-500' : ''} />
+                </button>
+              </div>
+            </>
+          )}
         </div>
         
         {currentUserRole !== 'viewer' && (

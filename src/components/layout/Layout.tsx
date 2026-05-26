@@ -4,6 +4,7 @@ import Navbar from './Navbar';
 import { OfflineIndicator } from '../common/OfflineIndicator';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
+import { useOpenBanking } from '../../context/OpenBankingContext';
 import { 
   Bell, 
   X, 
@@ -22,7 +23,7 @@ interface LayoutProps {
 
 interface NotificationItem {
   id: string;
-  type: 'subscription' | 'debt' | 'budget_warning' | 'budget_critical';
+  type: 'subscription' | 'debt' | 'budget_warning' | 'budget_critical' | 'bank_sync';
   title: string;
   message: string;
   date: string;
@@ -31,6 +32,7 @@ interface NotificationItem {
 
 export const Layout: React.FC<LayoutProps> = ({ children, currentHash, onNavigate }) => {
   const { user } = useAuth();
+  const { bankingToast } = useOpenBanking();
   const { 
     transactions, 
     categories, 
@@ -40,15 +42,24 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentHash, onNavigat
   } = useData();
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [readIds, setReadIds] = useState<string[]>([]);
+  const [readIds, setReadIds] = useState<string[]>(() => {
+    if (typeof window !== 'undefined' && user?.id) {
+      const stored = localStorage.getItem(`feniqo_read_notif_ids_${user.id}`) || localStorage.getItem(`moneymate_read_notif_ids_${user.id}`);
+      return stored ? JSON.parse(stored) : [];
+    }
+    return [];
+  });
 
   const isEn = user?.lang === 'en';
 
   // Load read notification IDs on mount or when user changes
   useEffect(() => {
     if (user?.id) {
-      const stored = localStorage.getItem(`moneymate_read_notif_ids_${user.id}`);
-      setReadIds(stored ? JSON.parse(stored) : []);
+      const stored = localStorage.getItem(`feniqo_read_notif_ids_${user.id}`) || localStorage.getItem(`moneymate_read_notif_ids_${user.id}`);
+      const parsed: string[] = stored ? JSON.parse(stored) : [];
+      setReadIds(prev => JSON.stringify(prev) === JSON.stringify(parsed) ? prev : parsed);
+    } else {
+      setReadIds([]);
     }
   }, [user?.id]);
 
@@ -160,9 +171,31 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentHash, onNavigat
       }
     });
 
+    // 4. Bank Sync Notifications (simulated bank transactions logs)
+    const storedBankNotifs = localStorage.getItem(`feniqo_bank_notifications_${user.id || 'demo'}`) || localStorage.getItem(`moneymate_bank_notifications_${user.id || 'demo'}`);
+    if (storedBankNotifs) {
+      try {
+        const bankNotifs = JSON.parse(storedBankNotifs);
+        if (Array.isArray(bankNotifs)) {
+          bankNotifs.forEach((n: any) => {
+            list.push({
+              id: n.id,
+              type: 'bank_sync',
+              title: n.title,
+              message: n.message,
+              date: n.date,
+              isImportant: n.isImportant || false
+            });
+          });
+        }
+      } catch (err) {
+        console.error("Error parsing bank notifications", err);
+      }
+    }
+
     // Sort by type importance (Important/Critical first)
     return list.sort((a, b) => (b.isImportant ? 1 : 0) - (a.isImportant ? 1 : 0));
-  }, [transactions, categories, budgets, debts, subscriptions, isEn, user]);
+  }, [transactions, categories, budgets, debts, subscriptions, isEn, user, bankingToast]);
 
   const unreadNotifications = useMemo(() => {
     return notifications.filter(n => !readIds.includes(n.id));
@@ -174,7 +207,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentHash, onNavigat
     if (user?.id && !readIds.includes(id)) {
       const next = [...readIds, id];
       setReadIds(next);
-      localStorage.setItem(`moneymate_read_notif_ids_${user.id}`, JSON.stringify(next));
+      localStorage.setItem(`feniqo_read_notif_ids_${user.id}`, JSON.stringify(next));
     }
   };
 
@@ -182,7 +215,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentHash, onNavigat
     if (user?.id) {
       const allIds = notifications.map(n => n.id);
       setReadIds(allIds);
-      localStorage.setItem(`moneymate_read_notif_ids_${user.id}`, JSON.stringify(allIds));
+      localStorage.setItem(`feniqo_read_notif_ids_${user.id}`, JSON.stringify(allIds));
     }
   };
 
@@ -196,6 +229,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentHash, onNavigat
         return <AlertTriangle size={18} className="text-yellow-500" />;
       case 'budget_critical':
         return <AlertTriangle size={18} className="text-red-500 animate-pulse" />;
+      case 'bank_sync':
+        return <span className="text-base shrink-0 select-none">🏦</span>;
     }
   };
 

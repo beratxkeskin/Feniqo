@@ -269,8 +269,8 @@ export function calculateMoneyScore(
   // -----------------------------------------------------------------
   const totalScore = Math.min(100, Math.max(0, savingsScore + budgetScore + debtScore + goalScore));
   
-  let level: 'critical' | 'healthy' | 'excellent' = 'healthy';
-  let label = 'İyi / Dengeli';
+  let level: 'critical' | 'healthy' | 'excellent';
+  let label: string;
 
   if (totalScore >= 80) {
     level = 'excellent';

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
+import { OpenBankingProvider } from './context/OpenBankingContext';
 import { Layout } from './components/layout/Layout';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 import { pwaStore } from './utils/pwaStore';
@@ -118,9 +119,11 @@ const NavigationRouter: React.FC = () => {
 
   return (
     <DataProvider>
-      <Layout currentHash={currentHash} onNavigate={navigateTo}>
-        {renderPage()}
-      </Layout>
+      <OpenBankingProvider>
+        <Layout currentHash={currentHash} onNavigate={navigateTo}>
+          {renderPage()}
+        </Layout>
+      </OpenBankingProvider>
     </DataProvider>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Download, X } from 'lucide-react';
+import { Plus, Download, X, FileSpreadsheet } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import type { Transaction } from '../db/types';
 import { TransactionList } from '../components/transactions/TransactionList';
@@ -7,6 +7,7 @@ import { TransactionFilters } from '../components/transactions/TransactionFilter
 import type { FilterState } from '../components/transactions/TransactionFilters';
 import { TransactionForm } from '../components/forms/TransactionForm';
 import { EmptyState } from '../components/common/EmptyState';
+import { ImportWizardModal } from '../components/transactions/ImportWizardModal';
 
 const INITIAL_FILTERS: FilterState = {
   search: '',
@@ -24,7 +25,9 @@ export const Transactions: React.FC = () => {
   const { transactions, categories, currentUserRole } = useData();
   
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
+  const [prevFilters, setPrevFilters] = useState<FilterState>(INITIAL_FILTERS);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
 
   // Pagination states
@@ -97,10 +100,11 @@ export const Transactions: React.FC = () => {
     });
   }, [transactions, categories, filters]);
 
-  // Reset page when filters change
-  useMemo(() => {
+  // Reset page when filters change (Adjusting state during render is a React-approved pattern)
+  if (filters !== prevFilters) {
+    setPrevFilters(filters);
     setCurrentPage(1);
-  }, [filters]);
+  }
 
   // ---------------------------------------------------------------
   // CLIENT PAGINATION
@@ -187,6 +191,17 @@ export const Transactions: React.FC = () => {
             <Download size={14} />
             <span>CSV Dışa Aktar</span>
           </button>
+
+          {currentUserRole !== 'viewer' && (
+            <button
+              onClick={() => setIsImportOpen(true)}
+              className="premium-btn-secondary flex items-center space-x-2 py-2 px-4 text-xs font-semibold"
+              title="Banka ekstre dosyasından işlemleri toplu olarak içe aktarır."
+            >
+              <FileSpreadsheet size={14} />
+              <span>İçeri Aktar</span>
+            </button>
+          )}
           
           {currentUserRole !== 'viewer' && (
             <button
@@ -297,6 +312,33 @@ export const Transactions: React.FC = () => {
               transactionToEdit={editingTx}
               onSuccess={handleFormSuccess}
               onCancel={() => setIsFormOpen(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* IMPORT MODAL OVERLAY */}
+      {isImportOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm" onClick={() => setIsImportOpen(false)} />
+          <div className="relative w-full max-w-4xl overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 z-10 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800/60 mb-5 shrink-0">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <FileSpreadsheet className="w-5 h-5 text-brand-500" />
+                <span>Banka Ekstresi İçe Aktar (CSV)</span>
+              </h3>
+              <button 
+                onClick={() => setIsImportOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <ImportWizardModal
+              onClose={() => setIsImportOpen(false)}
+              onSuccess={() => {
+                setIsImportOpen(false);
+              }}
             />
           </div>
         </div>

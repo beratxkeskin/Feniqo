@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { WifiOff, Wifi } from 'lucide-react';
 
 export const OfflineIndicator: React.FC = () => {
-  const [showStatus, setShowStatus] = useState(false);
+  const [showStatus, setShowStatus] = useState(() => typeof window !== 'undefined' ? !navigator.onLine : false);
   const [justCameBack, setJustCameBack] = useState(false);
 
   useEffect(() => {
@@ -26,11 +26,6 @@ export const OfflineIndicator: React.FC = () => {
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
-    // Eğer sayfa açıldığında çevrimdışıysa hemen göster
-    if (!navigator.onLine) {
-      setShowStatus(true);
-    }
 
     return () => {
       window.removeEventListener('online', handleOnline);

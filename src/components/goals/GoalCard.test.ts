@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { calculateDaysLeft, calculateEstimatedArrivalDate } from './GoalCard';
+import { calculateDaysLeft, calculateEstimatedArrivalDate } from '../../utils/goalUtils';
 import type { Goal } from '../../db/types';
+
+const formatLocalYYYYMMDD = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 describe('GoalCard Calculations', () => {
   describe('calculateDaysLeft', () => {
@@ -8,24 +15,25 @@ describe('GoalCard Calculations', () => {
       const today = new Date();
       const targetDate = new Date();
       targetDate.setDate(today.getDate() + 10);
-      const targetStr = targetDate.toISOString().split('T')[0];
+      const targetStr = formatLocalYYYYMMDD(targetDate);
 
       expect(calculateDaysLeft(targetStr)).toBe(10);
     });
 
     it('should return 0 or negative for today or past dates', () => {
       const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
+      const todayStr = formatLocalYYYYMMDD(today);
 
       expect(calculateDaysLeft(todayStr)).toBe(0);
 
       const pastDate = new Date();
       pastDate.setDate(today.getDate() - 5);
-      const pastStr = pastDate.toISOString().split('T')[0];
+      const pastStr = formatLocalYYYYMMDD(pastDate);
 
       expect(calculateDaysLeft(pastStr)).toBe(-5);
     });
   });
+
 
   describe('calculateEstimatedArrivalDate', () => {
     const baseGoal: Goal = {

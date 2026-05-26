@@ -34,14 +34,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               .eq('id', session.user.id)
               .single();
 
-            const savedLang = (localStorage.getItem('moneymate_lang') as 'tr' | 'en') || 'tr';
+            const savedLang = (localStorage.getItem('feniqo_lang') || localStorage.getItem('moneymate_lang') as 'tr' | 'en') || 'tr';
             setUser({
               id: session.user.id,
               email: session.user.email || '',
-              full_name: session.user.user_metadata?.full_name || profileData?.full_name || session.user.email?.split('@')[0] || '',
+              full_name: profileData?.full_name || session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
               currency: (profileData?.currency as any) || 'TRY',
               theme: (profileData?.theme as any) || 'system',
-              lang: savedLang,
+              lang: profileData?.lang || savedLang,
               active_workspace_id: profileData?.active_workspace_id || null,
             });
             setIsDemo(false);
@@ -61,10 +61,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const checkDemoSession = () => {
-      const storedDemo = localStorage.getItem('moneymate_demo_user');
+      const storedDemo = localStorage.getItem('feniqo_demo_user') || localStorage.getItem('moneymate_demo_user');
       if (storedDemo) {
         const parsed = JSON.parse(storedDemo);
-        const savedLang = (localStorage.getItem('moneymate_lang') as 'tr' | 'en') || 'tr';
+        const savedLang = (localStorage.getItem('feniqo_lang') || localStorage.getItem('moneymate_lang') as 'tr' | 'en') || 'tr';
         setUser({ ...parsed, lang: parsed.lang || savedLang });
         setIsDemo(true);
       } else {
@@ -85,20 +85,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .eq('id', session.user.id)
             .single();
 
-          const savedLang = (localStorage.getItem('moneymate_lang') as 'tr' | 'en') || 'tr';
+          const savedLang = (localStorage.getItem('feniqo_lang') || localStorage.getItem('moneymate_lang') as 'tr' | 'en') || 'tr';
           setUser({
             id: session.user.id,
             email: session.user.email || '',
-            full_name: session.user.user_metadata?.full_name || profileData?.full_name || session.user.email?.split('@')[0] || '',
+            full_name: profileData?.full_name || session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
             currency: (profileData?.currency as any) || 'TRY',
             theme: (profileData?.theme as any) || 'system',
-            lang: savedLang,
+            lang: profileData?.lang || savedLang,
             active_workspace_id: profileData?.active_workspace_id || null,
           });
           setIsDemo(false);
         } else {
           // Only clear if we were not in demo mode
-          if (!localStorage.getItem('moneymate_demo_user')) {
+          if (!localStorage.getItem('feniqo_demo_user') && !localStorage.getItem('moneymate_demo_user')) {
             setUser(null);
           }
         }
@@ -119,10 +119,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 800));
       
-      const savedLang = (localStorage.getItem('moneymate_lang') as 'tr' | 'en') || 'tr';
+      const savedLang = (localStorage.getItem('feniqo_lang') || localStorage.getItem('moneymate_lang') as 'tr' | 'en') || 'tr';
       const mockUser: Profile = {
         id: 'demo-user-123',
-        email: email || 'demo@moneymate.com',
+        email: email || 'demo@feniqo.com',
         full_name: email ? email.split('@')[0] : 'Demo Kullanıcı',
         currency: 'TRY',
         theme: 'system',
@@ -130,7 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         active_workspace_id: null,
       };
       
-      localStorage.setItem('moneymate_demo_user', JSON.stringify(mockUser));
+      localStorage.setItem('feniqo_demo_user', JSON.stringify(mockUser));
       setUser(mockUser);
       setIsDemo(true);
       setLoading(false);
@@ -161,7 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // If Supabase not configured, register as a demo user
     if (!isSupabaseConfigured || !supabase) {
       await new Promise(resolve => setTimeout(resolve, 800));
-      const savedLang = (localStorage.getItem('moneymate_lang') as 'tr' | 'en') || 'tr';
+      const savedLang = (localStorage.getItem('feniqo_lang') || localStorage.getItem('moneymate_lang') as 'tr' | 'en') || 'tr';
       const mockUser: Profile = {
         id: 'demo-user-123',
         email,
@@ -171,7 +171,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         lang: savedLang,
         active_workspace_id: null,
       };
-      localStorage.setItem('moneymate_demo_user', JSON.stringify(mockUser));
+      localStorage.setItem('feniqo_demo_user', JSON.stringify(mockUser));
       setUser(mockUser);
       setIsDemo(true);
       setLoading(false);
@@ -204,6 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       if (isDemo) {
+        localStorage.removeItem('feniqo_demo_user');
         localStorage.removeItem('moneymate_demo_user');
         setUser(null);
         setIsDemo(false);
@@ -227,11 +228,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updatedUser = { ...user, ...updates };
 
     if (updates.lang) {
-      localStorage.setItem('moneymate_lang', updates.lang);
+      localStorage.setItem('feniqo_lang', updates.lang);
     }
 
     if (isDemo) {
-      localStorage.setItem('moneymate_demo_user', JSON.stringify(updatedUser));
+      localStorage.setItem('feniqo_demo_user', JSON.stringify(updatedUser));
       setUser(updatedUser);
       return { success: true };
     }
@@ -242,9 +243,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (updates.currency !== undefined) updateFields.currency = updates.currency;
         if (updates.theme !== undefined) updateFields.theme = updates.theme;
         if (updates.active_workspace_id !== undefined) updateFields.active_workspace_id = updates.active_workspace_id;
+        if (updates.full_name !== undefined) updateFields.full_name = updates.full_name;
+        if (updates.lang !== undefined) updateFields.lang = updates.lang;
 
         if (updates.full_name !== undefined) {
-          updateFields.full_name = updates.full_name;
           try {
             await supabase.auth.updateUser({
               data: { full_name: updates.full_name }
@@ -259,14 +261,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .update(updateFields)
           .eq('id', user.id);
 
-        if (error) {
-          // If the profile DDL doesn't have full_name column yet, ignore error since it's saved in auth.users user_metadata
-          if (error.code === '42703' || error.message.includes('full_name')) {
-            console.warn("profiles table does not have full_name column, stored in user metadata only.");
-          } else {
-            throw error;
-          }
-        }
+        if (error) throw error;
 
         setUser(updatedUser);
         return { success: true };

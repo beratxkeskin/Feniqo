@@ -43,6 +43,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        setSearchQuery('');
       }
     };
 
@@ -57,14 +58,12 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
     if (isOpen && searchInputRef.current) {
       searchInputRef.current.focus();
     }
-    if (!isOpen) {
-      setSearchQuery('');
-    }
   }, [isOpen]);
 
   const handleSelect = (val: string) => {
     onChange(val);
     setIsOpen(false);
+    setSearchQuery('');
   };
 
   // Filter options based on search query
@@ -93,7 +92,10 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
       <button
         type="button"
         disabled={disabled}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setIsOpen(!isOpen);
+          if (isOpen) setSearchQuery('');
+        }}
         className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-white/70 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-800 dark:text-slate-100 border border-slate-200/60 dark:border-slate-800/80 rounded-xl text-sm font-semibold transition-all duration-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 disabled:opacity-50 disabled:cursor-not-allowed ${
           isOpen ? 'ring-2 ring-brand-500/50 border-brand-500' : ''
         }`}

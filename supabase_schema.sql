@@ -5,8 +5,10 @@
 CREATE TABLE public.profiles (
     id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
     email TEXT NOT NULL,
+    full_name TEXT,
     currency TEXT NOT NULL DEFAULT 'TRY', -- 'TRY', 'USD', 'EUR'
     theme TEXT NOT NULL DEFAULT 'system',  -- 'light', 'dark', 'system'
+    lang TEXT NOT NULL DEFAULT 'tr',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
@@ -39,6 +41,9 @@ CREATE TABLE public.transactions (
     payment_method TEXT NOT NULL, -- 'Nakit', 'Kredi Kartı', 'Banka Kartı', 'Havale/EFT', 'Diğer'
     transaction_date DATE NOT NULL DEFAULT CURRENT_DATE,
     receipt_url TEXT,
+    installment_number INT4,
+    total_installments INT4,
+    installment_group_id TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
@@ -852,5 +857,99 @@ CREATE POLICY "Users can delete assets (personal or workspace)"
         workspace_id IN (SELECT workspace_id FROM public.workspace_members WHERE user_id = auth.uid()) OR
         (workspace_id IS NULL AND user_id = auth.uid())
     );
+
+
+-----------------------------------------------------------
+-- 14. SCHEMA MIGRATION: GÜVENLİ KOLON VE VİZYON GÜNCELLEMESİ
+-- Bu bölüm, mevcut canlı veritabanınızı en son sürüme yükseltmek için 
+-- güvenli ALTER TABLE IF NOT EXISTS komutları içerir.
+-----------------------------------------------------------
+
+-- 14.1. PROFILES Tablosu Eksik Alanlarını Ekle (Profil Güncelleme, Dil ve İsim Senkronu)
+ALTER TABLE public.profiles 
+ADD COLUMN IF NOT EXISTS full_name TEXT,
+ADD COLUMN IF NOT EXISTS lang TEXT DEFAULT 'tr',
+ADD COLUMN IF NOT EXISTS active_workspace_id UUID;
+
+-- 14.2. TRANSACTIONS Tablosu Eksik Alanlarını Ekle (Taksitlendirme ve Cüzdan Desteği)
+ALTER TABLE public.transactions 
+ADD COLUMN IF NOT EXISTS installment_number INT4,
+ADD COLUMN IF NOT EXISTS total_installments INT4,
+ADD COLUMN IF NOT EXISTS installment_group_id TEXT,
+ADD COLUMN IF NOT EXISTS workspace_id UUID;
+
+-- 14.3. DİĞER TABLOLARDA EKSİK OLABİLECEK WORKSPACE KOLONLARINI GÜVENLİCE EKLE
+ALTER TABLE public.categories ADD COLUMN IF NOT EXISTS workspace_id UUID;
+ALTER TABLE public.budgets ADD COLUMN IF NOT EXISTS workspace_id UUID;
+ALTER TABLE public.recurring_transactions ADD COLUMN IF NOT EXISTS workspace_id UUID;
+ALTER TABLE public.goals ADD COLUMN IF NOT EXISTS workspace_id UUID;
+ALTER TABLE public.debts ADD COLUMN IF NOT EXISTS workspace_id UUID;
+ALTER TABLE public.subscriptions ADD COLUMN IF NOT EXISTS workspace_id UUID;
+
+-- 14.4. YABANCI ANAHTAR (FOREIGN KEY) VE İLİŞKİ TANIMLAMALARINI GÜVENLİCE YAP
+-- (Eğer daha önce eklenmemişse ilişkileri veritabanı kurallarına bağlar)
+DO $$ 
+BEGIN
+    -- profiles -> workspaces ilişkisi
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'profiles_active_workspace_id_fkey') THEN
+        ALTER TABLE public.profiles 
+        ADD CONSTRAINT profiles_active_workspace_id_fkey 
+        FOREIGN KEY (active_workspace_id) REFERENCES public.workspaces(id) ON DELETE SET NULL;
+    END IF;
+
+    -- transactions -> workspaces ilişkisi
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'transactions_workspace_id_fkey') THEN
+        ALTER TABLE public.transactions 
+        ADD CONSTRAINT transactions_workspace_id_fkey 
+        FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE CASCADE;
+    END IF;
+END $$;
+
+-- 14.5. YENİ EKLENEN KOLONLAR İÇİN VERİTABANI DÖKÜMANTASYONUNU EKLE
+COMMENT ON COLUMN public.profiles.full_name IS 'Kullanıcının adı soyadı / görünen ismi';
+COMMENT ON COLUMN public.profiles.lang IS 'Kullanıcının dil tercihi (tr / en)';
+COMMENT ON COLUMN public.profiles.active_workspace_id IS 'Kullanıcının o an aktif olan ortak çalışma alanı';
+COMMENT ON COLUMN public.transactions.installment_number IS 'Mevcut taksit sırası';
+COMMENT ON COLUMN public.transactions.total_installments IS 'Toplam taksit sayısı';
+COMMENT ON COLUMN public.transactions.installment_group_id IS 'Taksitleri birbirine bağlayan grup kimliği';
+
+-- 15. AKILLI VARLIK FİYAT TAKİPÇİSİ (auto_track, tracking_symbol)
+ALTER TABLE public.assets ADD COLUMN IF NOT EXISTS auto_track BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.assets ADD COLUMN IF NOT EXISTS tracking_symbol TEXT;
+
+COMMENT ON COLUMN public.assets.auto_track IS 'Varlığın canlı fiyatının otomatik takip edilip edilmediği';
+COMMENT ON COLUMN public.assets.tracking_symbol IS 'API üzerinden fiyatı çekilecek sembol veya ID (örn: GRA, bitcoin, AAPL, THYAO.IS)';
+
+
+-----------------------------------------------------------
+-- 16. SHARED PRICES CLOUD CACHE (PAYLAŞIMLI BULUT FİYAT ÖNBELLEĞİ)
+-- Bu tablo, Yahoo Finance CORS engellerini aşmak için tüm kullanıcıların
+-- ortaklaşa beslediği ve okuduğu merkezi borsa fiyat havuzudur.
+-----------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS public.shared_prices (
+    symbol TEXT PRIMARY KEY,
+    price NUMERIC NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USD',
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- RLS Etkinleştir
+ALTER TABLE public.shared_prices ENABLE ROW LEVEL SECURITY;
+
+-- Politikalar: Herkes okuyabilir, giriş yapmış tüm kullanıcılar yeni fiyat yazabilir/güncelleyebilir
+DROP POLICY IF EXISTS "Anyone can view shared prices" ON public.shared_prices;
+CREATE POLICY "Anyone can view shared prices"
+    ON public.shared_prices FOR SELECT
+    USING (true);
+
+DROP POLICY IF EXISTS "Authenticated users can upsert prices" ON public.shared_prices;
+CREATE POLICY "Authenticated users can upsert prices"
+    ON public.shared_prices FOR ALL
+    USING (auth.role() = 'authenticated')
+    WITH CHECK (auth.role() = 'authenticated');
+
+
+
 
 

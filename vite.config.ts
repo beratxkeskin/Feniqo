@@ -59,9 +59,9 @@ export default defineConfig({
         ]
       },
       manifest: {
-        name: 'MoneyMate | Kişisel Finans',
-        short_name: 'MoneyMate',
-        description: 'Gelir, gider, bütçe ve harcama alışkanlıklarınızı kolayca takip edin. Kişisel finans koçunuz MoneyMate.',
+        name: 'feniqo | Kişisel Finans ve Varlık Yönetimi',
+        short_name: 'feniqo',
+        description: 'Gelir, gider, bütçe ve harcama alışkanlıklarınızı kolayca takip edin. Kişisel finans ve varlık yönetim koçunuz feniqo.',
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',

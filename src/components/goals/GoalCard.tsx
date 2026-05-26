@@ -3,6 +3,7 @@ import type { Goal } from '../../db/types';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { formatCurrency, formatDate, getCurrencySymbol } from '../../utils/formatters';
+import { calculateDaysLeft, calculateEstimatedArrivalDate } from '../../utils/goalUtils';
 import { 
   Target, 
   Calendar, 
@@ -93,41 +94,6 @@ const getIcon = (name: string | null | undefined) => {
   }
 };
 
-export const calculateDaysLeft = (targetDateStr: string): number => {
-  const targetDate = new Date(targetDateStr);
-  const today = new Date();
-  targetDate.setHours(0, 0, 0, 0);
-  today.setHours(0, 0, 0, 0);
-  
-  const diffTime = targetDate.getTime() - today.getTime();
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-};
-
-export const calculateEstimatedArrivalDate = (goal: Goal): string => {
-  const current = Number(goal.current_amount);
-  const target = Number(goal.target_amount);
-  if (current >= target) return 'completed';
-  if (current <= 0) return 'no_savings';
-
-  const createdDate = new Date(goal.created_at || Date.now());
-  const today = new Date();
-  createdDate.setHours(0, 0, 0, 0);
-  today.setHours(0, 0, 0, 0);
-  
-  const diffTime = today.getTime() - createdDate.getTime();
-  // Weekly-moving-average smoothing (min 7 days) to prevent extreme spikes on initial deposits
-  const daysSinceCreation = Math.max(7, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-  
-  const avgSavedPerDay = current / daysSinceCreation;
-  if (avgSavedPerDay <= 0) return 'no_rate';
-
-  const remaining = target - current;
-  const daysNeeded = Math.ceil(remaining / avgSavedPerDay);
-  
-  const estimatedDate = new Date();
-  estimatedDate.setDate(today.getDate() + daysNeeded);
-  return estimatedDate.toISOString().split('T')[0];
-};
 
 export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit, onDelete, onAddFunds }) => {
   const { user } = useAuth();
@@ -173,7 +139,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit, onDelete, onAd
       } else {
         setErrorMsg(res.error || (isEn ? 'An error occurred during the transaction.' : 'İşlem sırasında hata oluştu.'));
       }
-    } catch (err) {
+    } catch {
       setErrorMsg(isEn ? 'An unexpected error occurred.' : 'Beklenmeyen bir hata oluştu.');
     } finally {
       setIsSubmitting(false);
@@ -325,7 +291,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit, onDelete, onAd
               </button>
               <button
                 onClick={() => { setShowQuickAction('remove'); setErrorMsg(''); }}
-                className="flex-1 flex items-center justify-center space-x-1.5 py-2.5 px-4 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold transition-all duration-200"
+                className="flex-1 flex items-center justify-center space-x-1.5 py-2.5 px-4 bg-slate-50 hover:bg-red-500 dark:bg-slate-800/40 dark:hover:bg-red-600 text-slate-700 dark:text-slate-300 hover:text-white dark:hover:text-white border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold hover:shadow-sm transition-all duration-200"
                 disabled={goal.current_amount <= 0}
               >
                 <Minus className="w-3.5 h-3.5" />
