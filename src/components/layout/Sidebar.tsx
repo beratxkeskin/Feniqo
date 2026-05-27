@@ -14,7 +14,6 @@ import {
   Users,
   Briefcase,
   Smartphone,
-  X,
   Bell
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -84,10 +83,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentHash, onNavigate, hasUn
       {/* Brand Header */}
       <div className="flex items-center justify-between px-6 py-6 border-b border-slate-100 dark:border-slate-800/60">
         <div className="flex items-center space-x-3">
-          <img src="/favicon.png" alt="feniqo Logo" className="w-10 h-10 rounded-xl object-contain shadow-sm shrink-0" />
+          <img src="/feniqo_logo.png" alt="Feniqo Logo" className="w-10 h-10 rounded-xl object-contain shadow-sm shrink-0" />
           <div>
             <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white leading-none">
-              feniqo
+              Feniqo
             </h1>
             <span className="text-[10px] font-semibold text-brand-600 dark:text-brand-400 bg-brand-500/10 px-1.5 py-0.5 rounded-md mt-1 inline-block">
               {isDemo ? 'DEMO MODU' : 'PRO SÜRÜM'}

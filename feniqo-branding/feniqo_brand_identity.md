@@ -1,8 +1,25 @@
-# feniqo Brand Identity & Visual System
+# 🦅 feniqo Brand Identity & Visual System
 
-Hoş geldiniz! feniqo vizyonunu kuş veya borsa grafiği gibi geleneksel figürler olmadan, **tamamen soyut, minimalist ve son derece lüks** bir çizgide temsil etmek üzere hazırladığım 4 yepyeni premium logo konseptini aşağıda inceleyebilirsiniz!
+## 🌟 Seçilen Resmi Logo: Altın Anka Kuşu (Majestic Golden Phoenix & Financial Growth)
 
-Resimler projenizin ana dizinindeki `feniqo-branding` klasörüne kopyalandığı için VS Code önizleyicinizde kusursuz görüntülenecektir.
+Tebrikler! **feniqo** marka vizyonunu en güçlü ve asil şekilde temsil eden **Altın Anka Kuşu ve Büyüme Grafiği** logomuz seçildi ve tüm platformda (Favicon, Apple PWA, Android PWA, Ana Logo ve README) aktif hale getirildi!
+
+Bu muazzam logo:
+* **Yeniden Doğuş (Rebirth):** Küllerinden yeniden doğan Anka kuşu figürüyle finansal olarak sıfırdan zirveye ulaşmayı simgeler.
+* **Yükseliş & Büyüme:** Göğsünde yer alan finansal grafik barları ve yukarı yönlü okla servet artışını ve finansal gücü temsil eder.
+* **Lüks Estetik:** Koyu obsidian zemin üzerinde parıldayan altın çizgileriyle markaya son derece premium ve elit bir hava katar.
+
+![feniqo Resmi Logo](./feniqo_logo_phoenix.png)
+
+---
+
+## 🖋️ Tipografi ve Yazım Kuralları (Typography Guidelines)
+
+> [!IMPORTANT]
+> **Logo ve Düz Metin Kullanım Ayrımı:**
+> * **Görsel Marka (Logo, İkon, PWA Çizimi):** Modernlik, sadelik ve dijital estetik açısından tamamen küçük harfli **`feniqo`** kullanımı sürdürülür.
+> * **Arayüz Başlıkları, Düz Yazılar ve Kurumsal Dil:** Profesyonellik, ciddiyet ve güvenilirlik uyandırması amacıyla platform genelindeki metinlerde ilk harf her zaman büyük olarak **`Feniqo`** şeklinde yazılır.
+> * *Örnek:* *"Feniqo | Kişisel Finans ve Varlık Yönetimi"* veya *"Feniqo ile harcamalarınızı yönetin."*
 
 ---
 

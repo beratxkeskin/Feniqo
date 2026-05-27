@@ -1,5 +1,8 @@
-# 🎯 feniqo | Modern Personal Finance Tracker, Workspace Split & Wealth Analysis Platform
+# 🎯 Feniqo | Modern Personal Finance Tracker, Workspace Split & Wealth Analysis Platform
 
+<p align="center">
+  <img src="public/feniqo_logo.png" alt="Feniqo Premium Logo" width="320px" />
+</p>
 
 [English](#english) | [Türkçe](#türkçe)
 
@@ -8,7 +11,7 @@
 <a name="english"></a>
 ## 🇬🇧 English
 
-**feniqo** is a **SaaS-quality** responsive personal finance management and collaborative budgeting web application. It allows users to track their incomes, expenses, budgets, and savings goals in a peaceful, balanced digital environment. Designed with state-of-the-art web aesthetics (glassmorphism, interactive SVG charts, fluid micro-animations, and responsive dark mode), feniqo is built for individuals, couples, and shared households to manage wealth together.
+**Feniqo** is a **SaaS-quality** responsive personal finance management and collaborative budgeting web application. It allows users to track their incomes, expenses, budgets, and savings goals in a peaceful, balanced digital environment. Designed with state-of-the-art web aesthetics (glassmorphism, interactive SVG charts, fluid micro-animations, and responsive dark mode), Feniqo is built for individuals, couples, and shared households to manage wealth together.
 
 ### 🚀 Live Demo
 👉 **[Live Demo Link (Vercel) - Launching Soon!]**
@@ -36,8 +39,8 @@
     *   Built-in **Safari/iOS PWA Installation Wizard** (`InstallationGuideModal`) to guide Apple users step-by-step.
     *   Optimized local state caches and state preservation to provide a fast offline-first experience.
 *   **🎨 Premium Brand Identity & Visual Assets:**
-    *   Rebranded under the high-end **feniqo** identity (representing rebirth, financial transformation, and upward growth).
-    *   Modern abstract visual designs including geometric shard compositions, monogram marks, and premium neon branding options (saved in the `feniqo-branding/` workspace folder).
+    *   Rebranded under the high-end **Feniqo** identity, featuring the chosen **Majestic Golden Phoenix & Financial Growth** logo representing rebirth, financial transformation, and upward wealth progression.
+    *   Complete visual assets package (including high-resolution logos, favicons, Apple touch icons, and PWA icons) and original branding design files preserved in the `feniqo-branding/` workspace folder.
 *   **🔒 Dual-Layer Authentication:** Secure membership and login system using Supabase email and password. Also supports a passwordless, instant **Demo Login** for quick portfolio evaluation.
 *   **📊 Rich Analytical Dashboard:**
     *   Monthly total income, expense, net balance, and savings rate indicators.
@@ -217,7 +220,7 @@ npm run lint
 <a name="türkçe"></a>
 ## 🇹🇷 Türkçe
 
-**feniqo**, kullanıcıların gelirlerini, giderlerini, bütçelerini ve harcama alışkanlıklarını modern, sade ve huzurlu bir dijital ortamda yönetmelerini sağlayan, **SaaS kalitesinde** responsive bir kişisel finans ve ortak bütçe takip platformudur. Üst düzey web estetiği (cam morfolojisi - glassmorphism, SVG grafikler, akıcı mikro animasyonlar ve duyarlı koyu mod) ile donatılan feniqo; bireyler, çiftler ve ortak bütçe yöneten haneler için özel olarak tasarlanmıştır.
+**Feniqo**, kullanıcıların gelirlerini, giderlerini, bütçelerini ve harcama alışkanlıklarını modern, sade ve huzurlu bir dijital ortamda yönetmelerini sağlayan, **SaaS kalitesinde** responsive bir kişisel finans ve ortak bütçe takip platformudur. Üst düzey web estetiği (cam morfolojisi - glassmorphism, SVG grafikler, akıcı mikro animasyonlar ve duyarlı koyu mod) ile donatılan Feniqo; bireyler, çiftler ve ortak bütçe yöneten haneler için özel olarak tasarlanmıştır.
 
 ### 🚀 Canlı Demo (Live Demo)
 👉 **[Canlı Demo Bağlantısı (Vercel) - Yakında!]**
@@ -245,8 +248,8 @@ npm run lint
     *   Apple kullanıcılarına adım adım rehberlik eden gelişmiş **Safari/iOS PWA Kurulum Sihirbazı** (`InstallationGuideModal`).
     *   Yerel önbellekler sayesinde internet bağlantısı koptuğunda dahi kesintisiz, hızlı ve çevrimdışı çalışma yeteneği.
 *   **🎨 Premium Kurumsal Kimlik & Görsel Varlıklar:**
-    *   Küllerinden yeniden doğuşu ve yükselişi simgeleyen üst düzey **feniqo** kimliği altında tamamen yenilenen marka algısı.
-    *   Masaüstünüzde yer alan `feniqo-branding/` klasöründe barındırılan geometrik kırılımlar, monogram logolar ve premium neon renk paletleriyle donatılmış soyut marka sembolleri.
+    *   Yeniden doğuşu, finansal dönüşümü ve sürekli yükselişi simgeleyen seçilmiş **Muazzam Altın Anka Kuşu & Finansal Büyüme** logosuyla güçlendirilen Feniqo kurumsal kimliği.
+    *   Tüm platform için hazırlanan görsel varlık paketi (yüksek çözünürlüklü logolar, tarayıcı favicon'ları, Apple PWA simgeleri) ve orijinal tasarım çalışmaları `feniqo-branding/` klasöründe saklanmaktadır.
 *   **🔒 Çift Katmanlı Yetkilendirme (Auth):** Supabase e-posta ve şifre altyapısı ile güvenli üyelik ve giriş sistemi. Portfolyo ziyaretçileri için şifresiz, tek tıkla **Demo Giriş** desteği.
 *   **📊 Zengin Analitik Gösterge Paneli (Dashboard):**
     *   Aylık toplam gelir, gider, net bakiye ve birikim oranı göstergeleri.

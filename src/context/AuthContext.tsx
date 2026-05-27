@@ -34,7 +34,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               .eq('id', session.user.id)
               .single();
 
-            const savedLang = (localStorage.getItem('feniqo_lang') || localStorage.getItem('moneymate_lang') as 'tr' | 'en') || 'tr';
+            const savedLang = (localStorage.getItem('feniqo_lang') || localStorage.getItem('moneymate_lang') || 'tr') as 'tr' | 'en';
             setUser({
               id: session.user.id,
               email: session.user.email || '',
@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const storedDemo = localStorage.getItem('feniqo_demo_user') || localStorage.getItem('moneymate_demo_user');
       if (storedDemo) {
         const parsed = JSON.parse(storedDemo);
-        const savedLang = (localStorage.getItem('feniqo_lang') || localStorage.getItem('moneymate_lang') as 'tr' | 'en') || 'tr';
+        const savedLang = (localStorage.getItem('feniqo_lang') || localStorage.getItem('moneymate_lang') || 'tr') as 'tr' | 'en';
         setUser({ ...parsed, lang: parsed.lang || savedLang });
         setIsDemo(true);
       } else {
@@ -85,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .eq('id', session.user.id)
             .single();
 
-          const savedLang = (localStorage.getItem('feniqo_lang') || localStorage.getItem('moneymate_lang') as 'tr' | 'en') || 'tr';
+          const savedLang = (localStorage.getItem('feniqo_lang') || localStorage.getItem('moneymate_lang') || 'tr') as 'tr' | 'en';
           setUser({
             id: session.user.id,
             email: session.user.email || '',
@@ -119,7 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 800));
       
-      const savedLang = (localStorage.getItem('feniqo_lang') || localStorage.getItem('moneymate_lang') as 'tr' | 'en') || 'tr';
+      const savedLang = (localStorage.getItem('feniqo_lang') || localStorage.getItem('moneymate_lang') || 'tr') as 'tr' | 'en';
       const mockUser: Profile = {
         id: 'demo-user-123',
         email: email || 'demo@feniqo.com',
@@ -161,7 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // If Supabase not configured, register as a demo user
     if (!isSupabaseConfigured || !supabase) {
       await new Promise(resolve => setTimeout(resolve, 800));
-      const savedLang = (localStorage.getItem('feniqo_lang') || localStorage.getItem('moneymate_lang') as 'tr' | 'en') || 'tr';
+      const savedLang = (localStorage.getItem('feniqo_lang') || localStorage.getItem('moneymate_lang') || 'tr') as 'tr' | 'en';
       const mockUser: Profile = {
         id: 'demo-user-123',
         email,

@@ -1,6 +1,6 @@
-# 🗺️ feniqo - Gelecek Yol Haritası (Future Roadmap)
+# 🗺️ Feniqo - Gelecek Yol Haritası (Future Roadmap)
 
-Bu dosya, **feniqo** platformunun gelecekteki sürümlerine eklenmesi planlanan premium, vizyoner ve kullanıcı deneyimini en üst seviyeye taşıyacak akıllı finansal özellikleri içermektedir. Projenin portfolyo değerini artırmak ve modern teknolojik trendleri yansıtmak adına tasarlanmıştır.
+Bu dosya, **Feniqo** platformunun gelecekteki sürümlerine eklenmesi planlanan premium, vizyoner ve kullanıcı deneyimini en üst seviyeye taşıyacak akıllı finansal özellikleri içermektedir. Projenin portfolyo değerini artırmak ve modern teknolojik trendleri yansıtmak adına tasarlanmıştır.
 
 ---
 

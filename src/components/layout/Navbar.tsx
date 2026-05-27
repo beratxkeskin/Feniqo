@@ -105,8 +105,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentHash, onNavigate, hasUnre
           </button>
 
           <div className="flex items-center space-x-2">
-            <img src="/favicon.png" alt="feniqo Logo" className="w-7 h-7 rounded-lg object-contain shadow-sm shrink-0" />
-            <span className="font-bold text-slate-900 dark:text-white tracking-tight hidden sm:block">feniqo</span>
+            <img src="/feniqo_logo.png" alt="Feniqo Logo" className="w-7 h-7 rounded-lg object-contain shadow-sm shrink-0" />
+            <span className="font-bold text-slate-900 dark:text-white tracking-tight hidden sm:block">Feniqo</span>
             <span className="text-[8px] font-bold text-brand-600 dark:text-brand-400 bg-brand-500/10 px-1 py-0.5 rounded-md">
               {isDemo ? 'DEMO' : 'PRO'}
             </span>
@@ -142,8 +142,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentHash, onNavigate, hasUnre
             {/* Header */}
             <div className="flex items-center justify-between pb-6 border-b border-slate-100 dark:border-slate-800/60">
               <div className="flex items-center space-x-2">
-                <img src="/favicon.png" alt="feniqo Logo" className="w-8 h-8 rounded-lg object-contain shadow-sm shrink-0" />
-                <span className="font-bold text-lg dark:text-white">feniqo</span>
+                <img src="/feniqo_logo.png" alt="Feniqo Logo" className="w-8 h-8 rounded-lg object-contain shadow-sm shrink-0" />
+                <span className="font-bold text-lg dark:text-white">Feniqo</span>
               </div>
               <button 
                 onClick={() => setIsOpen(false)}

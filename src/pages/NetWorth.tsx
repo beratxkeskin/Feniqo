@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
-import { supabase } from '../db/supabaseClient';
 import { CustomSelect } from '../components/common/CustomSelect';
 import { EmptyState } from '../components/common/EmptyState';
 import { formatCurrency } from '../utils/formatters';
@@ -422,7 +421,6 @@ export const NetWorth: React.FC = () => {
   const fetchLivePrices = async (assetsToSync = assets, force = false) => {
     setIsSyncingPrices(true);
     const newLivePrices: Record<string, number> = {};
-    const baseCur = user?.currency || 'TRY';
 
     try {
       const cache = getPriceCache();
