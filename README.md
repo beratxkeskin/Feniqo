@@ -39,7 +39,7 @@
     *   Built-in **Safari/iOS PWA Installation Wizard** (`InstallationGuideModal`) to guide Apple users step-by-step.
     *   Optimized local state caches and state preservation to provide a fast offline-first experience.
 *   **🎨 Premium Brand Identity & Visual Assets:**
-    *   Rebranded under the high-end **Feniqo** identity, featuring the chosen **Majestic Golden Phoenix & Financial Growth** logo representing rebirth, financial transformation, and upward wealth progression.
+    *   Rebranded under the high-end **Feniqo** identity, featuring the chosen **Majestic Emerald Phoenix & Financial Growth** logo representing rebirth, financial transformation, and upward wealth progression.
     *   Complete visual assets package (including high-resolution logos, favicons, Apple touch icons, and PWA icons) and original branding design files preserved in the `feniqo-branding/` workspace folder.
 *   **🔒 Dual-Layer Authentication:** Secure membership and login system using Supabase email and password. Also supports a passwordless, instant **Demo Login** for quick portfolio evaluation.
 *   **📊 Rich Analytical Dashboard:**
@@ -248,7 +248,7 @@ npm run lint
     *   Apple kullanıcılarına adım adım rehberlik eden gelişmiş **Safari/iOS PWA Kurulum Sihirbazı** (`InstallationGuideModal`).
     *   Yerel önbellekler sayesinde internet bağlantısı koptuğunda dahi kesintisiz, hızlı ve çevrimdışı çalışma yeteneği.
 *   **🎨 Premium Kurumsal Kimlik & Görsel Varlıklar:**
-    *   Yeniden doğuşu, finansal dönüşümü ve sürekli yükselişi simgeleyen seçilmiş **Muazzam Altın Anka Kuşu & Finansal Büyüme** logosuyla güçlendirilen Feniqo kurumsal kimliği.
+    *   Yeniden doğuşu, finansal dönüşümü ve sürekli yükselişi simgeleyen seçilmiş **Muazzam Zümrüt Anka Kuşu & Finansal Büyüme** logosuyla güçlendirilen Feniqo kurumsal kimliği.
     *   Tüm platform için hazırlanan görsel varlık paketi (yüksek çözünürlüklü logolar, tarayıcı favicon'ları, Apple PWA simgeleri) ve orijinal tasarım çalışmaları `feniqo-branding/` klasöründe saklanmaktadır.
 *   **🔒 Çift Katmanlı Yetkilendirme (Auth):** Supabase e-posta ve şifre altyapısı ile güvenli üyelik ve giriş sistemi. Portfolyo ziyaretçileri için şifresiz, tek tıkla **Demo Giriş** desteği.
 *   **📊 Zengin Analitik Gösterge Paneli (Dashboard):**
