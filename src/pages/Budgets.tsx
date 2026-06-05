@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, X, Calendar, CheckCircle2, Loader, Copy, Brain } from 'lucide-react';
+import { Plus, X, Calendar, CheckCircle2, Loader, Copy, Lightbulb } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../context/AuthContext';
@@ -454,16 +454,16 @@ export const Budgets: React.FC = () => {
 
         {/* AI Coach Detailed Analysis Card */}
         <div className="lg:col-span-2 p-5 rounded-3xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200 relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-32 h-32 bg-indigo-500/10 dark:bg-indigo-500/5 blur-3xl rounded-full pointer-events-none" />
+          <div className="absolute top-0 left-0 w-32 h-32 bg-brand-500/10 dark:bg-brand-500/5 blur-3xl rounded-full pointer-events-none" />
           
           <div className="space-y-4 flex-1">
             {/* Header with status */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800/60 w-full">
               <h4 className="font-extrabold text-slate-800 dark:text-slate-200 text-sm tracking-tight flex items-center space-x-2">
                 <span className="p-1 bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-lg shrink-0">
-                  <Brain size={14} className="animate-pulse" />
+                  <Lightbulb size={14} className="animate-pulse" />
                 </span>
-                <span>{user?.lang === 'en' ? 'AI Financial Coach Insights' : 'AI Finansal Bütçe Koçu Raporu'}</span>
+                <span>{user?.lang === 'en' ? 'Feniqo Smart Insight Report' : 'Feniqo Akıllı Bütçe Öngörü Raporu'}</span>
               </h4>
               <span className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${
                 analysis503020.score === 'excellent' 
@@ -561,14 +561,14 @@ export const Budgets: React.FC = () => {
 
       {/* AI Coach Alert Suggestion Banner */}
       {budgetsExceedingWarning.length > 0 && (
-        <div className="p-5 rounded-3xl border border-indigo-200 dark:border-indigo-500/20 bg-gradient-to-br from-indigo-50/50 to-brand-50/50 dark:from-indigo-950/10 dark:to-brand-950/10 text-slate-800 dark:text-slate-200 flex items-start space-x-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300 mb-6">
-          <div className="p-3 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center shrink-0 animate-pulse">
-            <Brain size={22} />
+        <div className="p-5 rounded-3xl border border-brand-200 dark:border-brand-500/20 bg-gradient-to-br from-brand-500/5 to-brand-500/10 dark:from-brand-950/5 dark:to-brand-950/10 text-slate-800 dark:text-slate-200 flex items-start space-x-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300 mb-6">
+          <div className="p-3 bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-2xl flex items-center justify-center shrink-0 animate-pulse">
+            <Lightbulb size={22} />
           </div>
           <div className="space-y-1.5">
-            <h5 className="font-bold text-sm uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
-              <span>{user?.lang === 'en' ? 'AI Financial Coach Alert' : 'AI Finansal Bütçe Koçu'}</span>
-              <span className="text-[10px] bg-indigo-500/10 px-2.5 py-0.5 rounded-full font-bold tracking-normal text-indigo-600 dark:text-indigo-400">
+            <h5 className="font-bold text-sm uppercase tracking-wider text-brand-600 dark:text-brand-400 flex items-center gap-2">
+              <span>{user?.lang === 'en' ? 'Feniqo Smart Insight Alert' : 'Feniqo Akıllı Bütçe Öngörüsü'}</span>
+              <span className="text-[10px] bg-brand-500/10 px-2.5 py-0.5 rounded-full font-bold tracking-normal text-brand-600 dark:text-brand-400">
                 {user?.lang === 'en' ? 'Live Analysis' : 'Canlı Analiz'}
               </span>
             </h5>

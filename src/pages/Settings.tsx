@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Settings as SettingsIcon, Shield, Trash2, Moon, Sun, DollarSign, Brain, RefreshCw, Briefcase, X, Zap, Clock, Database, Download, Upload, CheckCircle2, AlertTriangle, User as UserIcon } from 'lucide-react';
+import { Settings as SettingsIcon, Shield, Trash2, Moon, Sun, DollarSign, Lightbulb, RefreshCw, Briefcase, X, Zap, Clock, Database, Download, Upload, CheckCircle2, AlertTriangle, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { ConfirmModal } from '../components/common/ConfirmModal';
@@ -27,10 +27,10 @@ const translations = {
     appLanguage: 'Uygulama Dili / Language',
     turkish: 'Türkçe (TR)',
     english: 'English (EN)',
-    aiCoachTitle: 'Yapay Zeka Destekli Finans Koçu',
+    aiCoachTitle: 'Feniqo Akıllı Finans Analisti',
     aiCoachDesc: 'Mevcut finansal işlemlerinizi, harcama alışkanlıklarınızı ve tasarruf oranınızı analiz ederek size özel finansal kararlar ve birikim tavsiyeleri sunar.',
-    generateAnalysis: 'Finansal Analiz Oluştur',
-    gatheringData: 'İşlemleriniz toparlanıyor, bütçe analizleri yapılıyor...',
+    generateAnalysis: 'Öngörü ve Analiz Raporu Oluştur',
+    gatheringData: 'Verileriniz işleniyor, finansal öngörüler hesaplanıyor...',
     sessionInfo: 'Oturum Bilgileri',
     sessionType: 'Oturum Tipi:',
     userAccount: 'Kullanıcı Hesabı:',
@@ -44,14 +44,15 @@ const translations = {
     confirmModalConfirm: 'Verileri Kalıcı Olarak Sıfırla',
     confirmModalCancel: 'Vazgeç',
     aiNoTransactions: 'Henüz hesaplanacak bir finansal işlem girmediniz. Lütfen analiz yapabilmem için öncelikle gelir ve gider işlemlerinizi ekleyin!',
-    aiReportTitle: '### 📊 MoneyMate AI Finansal Sağlık Analizi\n\n',
-    aiReportSummary: 'Toplam geliriniz **{totalInc}**, harcamalarınız ise **{totalExp}** seviyesinde.\n\n',
-    aiCriticalWarning: '⚠️ **Kritik Durum:** Bu dönem giderleriniz, gelirlerinizden **{netSavings}** daha fazla. Bütçeniz **açık veriyor**.\n\n',
-    aiCriticalAdvice: '💡 **Tavsiye:** Esnek harcamalarınızı (Örn: Eğlence, Market) hemen gözden geçirin. Harcama yapmadan önce \'Bütçe Planı\' oluşturmanız ve limitleri aşmamanız kritik önem taşıyor.\n',
-    aiSavingsStatus: '📈 **Tasarruf Durumu:** Tasarruf oranınız **%{rate}** seviyesinde. Yani kazancınızın beşte birinden fazlasını başarıyla biriktiriyorsunuz. Harika bir iş çıkarıyorsunuz!\n\n',
-    aiExcellentRate: '🌟 **Mükemmel Oran:** %30 ve üzeri tasarruf oranları finansal bağımsızlık için altın standarttır. Biriken bu tutarları acil durum fonu oluşturmak veya pasif gelir getirecek yatırım araçlarında (Fon, Hisse Senedi vb.) değerlendirmeyi düşünebilirsiniz.\n',
-    aiImprovementRate: '💡 **Gelişim Alanı:** Birikim oranınızı %20 seviyesine çıkarmak için sabit aboneliklerinizi (Netflix, Spotify, bulut depolama vb.) sadeleştirmeyi ve küçük günlük harcamaları azaltmayı (Kahve, dışarıdan yemek siparişi vb.) deneyebilirsiniz.\n',
-    aiHighestExpense: '\n🔍 **En Yüksek Harcama:** En büyük harcama kalemi **{cName}** olarak görünüyor. Bu kategori toplam bütçenizi en çok baskılayan kalem. Gelecek ay bu kategoride bütçe limiti belirleyerek harcamaları sınırlandırmak akıllıca olacaktır.',
+    aiReportTitle: 'Feniqo Akıllı Öngörü & Finans Analizi',
+    aiReportSummary: 'Toplam geliriniz {totalInc}, harcamalarınız ise {totalExp} seviyesinde.',
+    aiCriticalWarning: 'Bu dönem giderleriniz, gelirlerinizden {netSavings} daha fazla. Bütçeniz açık veriyor.',
+    aiCriticalAdvice: 'Esnek harcamalarınızı (Örn: Eğlence, Market) hemen gözden geçirin. Harcama yapmadan önce \'Bütçe Planı\' oluşturmanız ve limitleri aşmamanız kritik önem taşıyor.',
+    aiSavingsStatus: 'Tasarruf oranınız %{rate} seviyesinde. Yani kazancınızın beşte birinden fazlasını başarıyla biriktiriyorsunuz. Harika bir iş çıkarıyorsunuz!',
+    aiExcellentRate: '%30 ve üzeri tasarruf oranları finansal bağımsızlık için altın standarttır. Biriken bu tutarları acil durum fonu oluşturmak veya pasif gelir getirecek yatırım araçlarında (Fon, Hisse Senedi vb.) değerlendirmeyi düşünebilirsiniz.',
+    aiImprovementRate: 'Birikim oranınızı %{target}% seviyesine çıkarmak için sabit aboneliklerinizi (Netflix, Spotify, bulut depolama vb.) sadeleştirmeyi ve küçük günlük harcamaları azaltmayı (Kahve, dışarıdan yemek siparişi vb.) deneyebilirsiniz.',
+    aiHighestExpenseFixed: 'En büyük harcama kalemi {cName} olarak görünüyor. Bu kategori sabit/zorunlu bir gider olduğu için doğrudan sınırlandırılması zordur. Bütçe dengesini sağlamak için diğer esnek harcama kategorilerinde (Örn: Eğlence, Yemek, Market) tasarruf yapmaya odaklanmak daha akıllıca olacaktır.',
+    aiHighestExpenseDiscretionary: 'En büyük harcama kalemi {cName} olarak görünüyor. Bu kategori toplam bütçenizi en çok baskılayan kalem. Gelecek ay bu kategoride bütçe limiti belirleyerek esnek harcamaları sınırlandırmak akıllıca olacaktır.',
     categories: {
       'cat-expense-kira': 'Kira ve Konut',
       'cat-expense-market': 'Gıda ve Süpermarket',
@@ -119,10 +120,10 @@ const translations = {
     appLanguage: 'Application Language / Dil',
     turkish: 'Türkçe (TR)',
     english: 'English (EN)',
-    aiCoachTitle: 'AI-Powered Finance Coach',
+    aiCoachTitle: 'Feniqo Smart Finance Analyst',
     aiCoachDesc: 'Analyzes your current financial transactions, spending patterns, and savings rate to provide personalized financial insights and savings advice.',
-    generateAnalysis: 'Generate Financial Analysis',
-    gatheringData: 'Gathering your transactions, running budget analysis...',
+    generateAnalysis: 'Generate Financial Insight Report',
+    gatheringData: 'Processing transactions, calculating financial projections...',
     sessionInfo: 'Session Info',
     sessionType: 'Session Type:',
     userAccount: 'User Account:',
@@ -136,14 +137,15 @@ const translations = {
     confirmModalConfirm: 'Permanently Reset Data',
     confirmModalCancel: 'Cancel',
     aiNoTransactions: 'You haven\'t entered any financial transactions yet. Please add your income and expense transactions first so I can analyze your data!',
-    aiReportTitle: '### 📊 MoneyMate AI Financial Health Analysis\n\n',
-    aiReportSummary: 'Your total income is **{totalInc}**, and your expenses are at **{totalExp}**.\n\n',
-    aiCriticalWarning: '⚠️ **Critical Situation:** Your expenses for this period exceed your income by **{netSavings}**. Your budget is **running a deficit**.\n\n',
-    aiCriticalAdvice: '💡 **Advice:** Review your flexible expenses (e.g. Entertainment, Supermarket) immediately. Creating a \'Budget Plan\' before spending and staying within limits is critical.\n',
-    aiSavingsStatus: '📈 **Savings Status:** Your savings rate is at **{rate}%**. In other words, you are successfully saving more than one-fifth of your earnings. Great job!\n\n',
-    aiExcellentRate: '🌟 **Excellent Rate:** Savings rates of 30% and above are the gold standard for financial independence. You might consider using these accumulated savings to build an emergency fund or invest in passive income generators (Funds, Stocks, etc.).\n',
-    aiImprovementRate: '💡 **Area for Improvement:** To increase your savings rate to the 20% level, you could simplify your fixed subscriptions (Netflix, Spotify, cloud storage, etc.) and reduce minor daily expenses (coffee, food delivery, etc.).\n',
-    aiHighestExpense: '\n🔍 **Highest Expense:** Your largest expense category appears to be **{cName}**. This category is putting the most pressure on your overall budget. Setting a budget limit for this category next month will be a smart way to limit expenses.',
+    aiReportTitle: 'Feniqo Smart Insight & Financial Analysis',
+    aiReportSummary: 'Your total income is {totalInc}, and your expenses are at {totalExp}.',
+    aiCriticalWarning: 'Your expenses for this period exceed your income by {netSavings}. Your budget is running a deficit.',
+    aiCriticalAdvice: 'Review your flexible expenses (e.g. Entertainment, Supermarket) immediately. Creating a \'Budget Plan\' before spending and staying within limits is critical.',
+    aiSavingsStatus: 'Your savings rate is at {rate}%. In other words, you are successfully saving more than one-fifth of your earnings. Great job!',
+    aiExcellentRate: 'Savings rates of 30% and above are the gold standard for financial independence. You might consider using these accumulated savings to build an emergency fund or invest in passive income generators (Funds, Stocks, etc.).',
+    aiImprovementRate: 'To increase your savings rate to the {target}% level, you could simplify your fixed subscriptions (Netflix, Spotify, cloud storage, etc.) and reduce minor daily expenses (coffee, food delivery, etc.).',
+    aiHighestExpenseFixed: 'Your largest expense category appears to be {cName}. Since this is a fixed or essential cost, it is difficult to reduce directly. It would be wiser to focus on saving in other discretionary categories (e.g. Entertainment, Food, Shopping) to balance your overall budget.',
+    aiHighestExpenseDiscretionary: 'Your largest expense category appears to be {cName}. This category is putting the most pressure on your overall budget. Setting a budget limit for this category next month will be a smart way to limit flexible expenses.',
     categories: {
       'cat-expense-kira': 'Rent & Housing',
       'cat-expense-market': 'Food & Supermarket',
@@ -197,17 +199,17 @@ const translations = {
 
 export const Settings: React.FC = () => {
   const { user, updateProfile, isDemo } = useAuth();
-  const { 
-    transactions, 
-    categories, 
-    budgets, 
-    recurringTransactions, 
-    goals, 
-    debts, 
-    subscriptions, 
-    assets, 
-    resetAllData, 
-    importBackupData 
+  const {
+    transactions,
+    categories,
+    budgets,
+    recurringTransactions,
+    goals,
+    debts,
+    subscriptions,
+    assets,
+    resetAllData,
+    importBackupData
   } = useData();
   const currency = user?.currency || 'TRY';
   const lang = user?.lang || 'tr';
@@ -215,7 +217,7 @@ export const Settings: React.FC = () => {
 
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
-  
+
   const [fullName, setFullName] = useState(user?.full_name || '');
 
   React.useEffect(() => {
@@ -234,13 +236,13 @@ export const Settings: React.FC = () => {
       }
     }
   };
-  
+
   // PWA Install Hook Entegrasyonu
   const { isInstallable, isInstalled: isAppInstalled, install: handleInstallApp } = usePWA();
   const [showIosGuide, setShowIosGuide] = useState(false);
 
   const isIOS = typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-  
+
   // AI Coach state
   const [showAiReport, setShowAiReport] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
@@ -356,7 +358,7 @@ export const Settings: React.FC = () => {
   };
 
   const handleExportTransactions = () => {
-    const headers = lang === 'tr' 
+    const headers = lang === 'tr'
       ? ["Tarih", "Tür", "Kategori", "Açıklama", "Tutar", "Ödeme Yöntemi"]
       : ["Date", "Type", "Category", "Description", "Amount", "Payment Method"];
     const csv = convertToCSV(transactions, headers, (t) => [
@@ -459,7 +461,7 @@ export const Settings: React.FC = () => {
       try {
         const content = event.target?.result as string;
         const parsed = JSON.parse(content);
-        
+
         if (!parsed || typeof parsed !== 'object' || !parsed.data || typeof parsed.data !== 'object') {
           setImportError(lang === 'tr' ? 'Geçersiz yedekleme dosyası yapısı.' : 'Invalid backup file structure.');
           return;
@@ -505,7 +507,7 @@ export const Settings: React.FC = () => {
 
   const handleConfirmImport = async () => {
     if (!importingFile) return;
-    
+
     setPortabilityLoading(true);
     const res = await importBackupData(importingFile);
     setPortabilityLoading(false);
@@ -527,14 +529,14 @@ export const Settings: React.FC = () => {
   const activeThemeId = useMemo(() => {
     const appliedTheme = localStorage.getItem('moneymate_applied_theme') || 'dark';
     const colorThemeName = localStorage.getItem('moneymate_color_theme') || 'emerald';
-    
+
     if (colorThemeName === 'emerald') {
       return appliedTheme === 'light' ? 'light' : 'dark';
     }
-    return colorThemeName; // 'sunset', 'rose', 'ocean'
+    return colorThemeName; // 'sunset', 'rose', 'feniqo'
   }, [colorTheme, user?.theme]);
 
-  const handleThemeSelect = async (themeId: 'light' | 'dark' | 'sunset' | 'rose' | 'ocean') => {
+  const handleThemeSelect = async (themeId: 'light' | 'dark' | 'sunset' | 'rose' | 'feniqo') => {
     const isDarkMode = themeId !== 'light';
     const colorThemeName = (themeId === 'light' || themeId === 'dark') ? 'emerald' : themeId;
 
@@ -552,12 +554,12 @@ export const Settings: React.FC = () => {
       document.documentElement.classList.remove('dark');
     }
 
-    document.documentElement.classList.remove('theme-emerald', 'theme-sunset', 'theme-rose', 'theme-ocean');
+    document.documentElement.classList.remove('theme-emerald', 'theme-sunset', 'theme-rose', 'theme-feniqo');
     document.documentElement.classList.add(`theme-${colorThemeName}`);
 
     // 4. Update component state
     setColorTheme(colorThemeName);
-    
+
     setSuccessMsg(translations[lang].themeUpdated);
     setTimeout(() => setSuccessMsg(''), 3000);
   };
@@ -589,7 +591,32 @@ export const Settings: React.FC = () => {
   // ---------------------------------------------------------------
   // AI COACH RULE-BASED ENGINE (MOCK AI REPORT)
   // ---------------------------------------------------------------
-  const aiAdviceText = useMemo(() => {
+  // Sabit / Zorunlu gider kategorilerini kontrol eden yardımcı fonksiyon
+  const isFixedExpenseCategory = (id: string, name: string): boolean => {
+    const fixedIds = ['cat-expense-kira', 'cat-expense-fatura', 'cat-expense-egitim', 'cat-expense-saglik', 'cat-expense-tasarruf'];
+    if (fixedIds.includes(id)) return true;
+    
+    const lowerName = name.toLowerCase();
+    const fixedKeywords = [
+      'kira', 'rent', 'housing', 'konut',
+      'fatura', 'bill', 'utilities', 'aidat', 'dues',
+      'vergi', 'tax',
+      'eğitim', 'education', 'okul', 'school',
+      'sağlık', 'health', 'medikal', 'medical',
+      'sigorta', 'insurance',
+      'kredi', 'loan', 'taksit', 'installment',
+      'borç', 'debt'
+    ];
+    return fixedKeywords.some(keyword => lowerName.includes(keyword));
+  };
+
+  // AI COACH RULE-BASED ENGINE (MOCK AI REPORT DATA)
+  // ---------------------------------------------------------------
+  const aiAnalysis = useMemo(() => {
+    if (transactions.length === 0) {
+      return { isEmpty: true, message: t.aiNoTransactions };
+    }
+
     // 1. Basic calculations for advice
     const totalInc = transactions
       .filter(t => t.type === 'income')
@@ -619,37 +646,60 @@ export const Settings: React.FC = () => {
       }
     });
 
-    // Custom text output
-    if (transactions.length === 0) {
-      return t.aiNoTransactions;
-    }
+    const hasDeficit = netSavings < 0;
+    const cName = topCatId ? (t.categories[topCatId] || categories.find(c => c.id === topCatId)?.name || t.categories['default']) : '';
+    const isFixedExpense = topCatId ? isFixedExpenseCategory(topCatId, cName) : false;
 
-    let report = t.aiReportTitle;
-    report += t.aiReportSummary
-      .replace('{totalInc}', formatCurrency(totalInc, currency))
-      .replace('{totalExp}', formatCurrency(totalExp, currency));
-    
-    if (netSavings < 0) {
-      report += t.aiCriticalWarning.replace('{netSavings}', formatCurrency(Math.abs(netSavings), currency));
-      report += t.aiCriticalAdvice;
+    // Determine advice strings
+    let statusTitle = '';
+    let statusText = '';
+    let statusAdvice = '';
+    let statusType: 'deficit' | 'savings_excellent' | 'savings_improvement' = 'savings_improvement';
+
+    if (hasDeficit) {
+      statusType = 'deficit';
+      statusTitle = lang === 'tr' ? 'Kritik Durum' : 'Critical Status';
+      statusText = t.aiCriticalWarning.replace('{netSavings}', formatCurrency(Math.abs(netSavings), currency));
+      statusAdvice = t.aiCriticalAdvice;
     } else {
-      report += t.aiSavingsStatus.replace('{rate}', String(rate));
+      statusText = t.aiSavingsStatus.replace('{rate}', String(rate));
       if (rate >= savingsTarget + 10) {
-        report += t.aiExcellentRate;
+        statusType = 'savings_excellent';
+        statusTitle = lang === 'tr' ? 'Mükemmel Oran' : 'Excellent Rate';
+        statusAdvice = t.aiExcellentRate;
       } else {
-        report += t.aiImprovementRate
-          .replace('20%', `${savingsTarget}%`)
-          .replace('%20', `%${savingsTarget}`);
+        statusType = 'savings_improvement';
+        statusTitle = lang === 'tr' ? 'Gelişim Alanı' : 'Area for Improvement';
+        statusAdvice = t.aiImprovementRate
+          .replace('{target}', String(savingsTarget));
       }
     }
 
+    let highestExpenseText = '';
     if (topCatId) {
-      const cName = t.categories[topCatId] || t.categories['default'];
-      report += t.aiHighestExpense.replace('{cName}', cName);
+      if (isFixedExpense) {
+        highestExpenseText = t.aiHighestExpenseFixed.replace('{cName}', cName);
+      } else {
+        highestExpenseText = t.aiHighestExpenseDiscretionary.replace('{cName}', cName);
+      }
     }
 
-    return report;
-  }, [transactions, currency, t, savingsTarget]);
+    return {
+      isEmpty: false,
+      totalInc,
+      totalExp,
+      netSavings,
+      rate,
+      statusType,
+      statusTitle,
+      statusText,
+      statusAdvice,
+      topCatId,
+      topCatName: cName,
+      isFixedExpense,
+      highestExpenseText
+    };
+  }, [transactions, currency, t, lang, savingsTarget, categories]);
 
   const triggerAiAnalysis = () => {
     setAiLoading(true);
@@ -668,7 +718,7 @@ export const Settings: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      
+
       {/* Page Header */}
       <div>
         <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
@@ -687,10 +737,10 @@ export const Settings: React.FC = () => {
 
       {/* SETTINGS CARD GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Left column: Prefs form */}
         <div className="lg:col-span-2 space-y-6">
-          
+
           {/* General Preferences */}
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-5">
             <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center space-x-2 pb-3 border-b border-slate-100 dark:border-slate-800/60">
@@ -751,8 +801,8 @@ export const Settings: React.FC = () => {
                   {t.appTheme}
                 </label>
                 <p className="text-[10px] text-slate-400 dark:text-slate-500 pl-1 leading-relaxed mt-0.5">
-                  {lang === 'tr' 
-                    ? 'Uygulamanın genel atmosferini, arka plan auralarını ve kart renklerini bütünsel olarak değiştiren tam sarmalayıcı premium temalar.' 
+                  {lang === 'tr'
+                    ? 'Uygulamanın genel atmosferini, arka plan auralarını ve kart renklerini bütünsel olarak değiştiren tam sarmalayıcı premium temalar.'
                     : 'Fully immersive premium themes that holistically morph backgrounds, atmospheric glows, and card textures.'}
                 </p>
               </div>
@@ -761,11 +811,10 @@ export const Settings: React.FC = () => {
                 {/* 1. Mistik Zümrüt (Açık) */}
                 <button
                   onClick={() => handleThemeSelect('light')}
-                  className={`py-3 px-2.5 rounded-xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center ${
-                    activeThemeId === 'light'
+                  className={`py-3 px-2.5 rounded-xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center ${activeThemeId === 'light'
                       ? 'border-teal-500 bg-teal-500/10 text-teal-600 dark:text-teal-400 shadow-sm shadow-teal-500/10'
                       : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center space-x-1.5">
                     <Sun size={12} className="text-amber-500 shrink-0" />
@@ -779,11 +828,10 @@ export const Settings: React.FC = () => {
                 {/* 2. Mistik Zümrüt (Koyu) */}
                 <button
                   onClick={() => handleThemeSelect('dark')}
-                  className={`py-3 px-2.5 rounded-xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center ${
-                    activeThemeId === 'dark'
+                  className={`py-3 px-2.5 rounded-xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center ${activeThemeId === 'dark'
                       ? 'border-teal-500 bg-teal-500/10 text-teal-600 dark:text-teal-400 shadow-sm shadow-teal-500/10'
                       : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center space-x-1.5">
                     <Moon size={12} className="text-slate-400 shrink-0" />
@@ -797,11 +845,10 @@ export const Settings: React.FC = () => {
                 {/* 3. Gün Batımı Altını */}
                 <button
                   onClick={() => handleThemeSelect('sunset')}
-                  className={`py-3 px-2.5 rounded-xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center ${
-                    activeThemeId === 'sunset'
+                  className={`py-3 px-2.5 rounded-xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center ${activeThemeId === 'sunset'
                       ? 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-sm shadow-amber-500/10'
                       : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center space-x-1.5">
                     <span className="text-[10px] shrink-0">🌅</span>
@@ -815,11 +862,10 @@ export const Settings: React.FC = () => {
                 {/* 4. Cesur Gül */}
                 <button
                   onClick={() => handleThemeSelect('rose')}
-                  className={`py-3 px-2.5 rounded-xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center ${
-                    activeThemeId === 'rose'
+                  className={`py-3 px-2.5 rounded-xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center ${activeThemeId === 'rose'
                       ? 'border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400 shadow-sm shadow-rose-500/10'
                       : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center space-x-1.5">
                     <span className="text-[10px] shrink-0">🌹</span>
@@ -830,21 +876,21 @@ export const Settings: React.FC = () => {
                   </span>
                 </button>
 
-                {/* 5. Sakin Matcha */}
+                {/* 5. Feniqo Yeşili (Official Brand Theme) */}
                 <button
-                  onClick={() => handleThemeSelect('ocean')}
+                  onClick={() => handleThemeSelect('feniqo')}
                   className={`py-3 px-2.5 rounded-xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center ${
-                    activeThemeId === 'ocean'
-                      ? 'border-emerald-600 bg-emerald-600/10 text-emerald-700 dark:text-emerald-400 shadow-sm shadow-emerald-600/10'
+                    activeThemeId === 'feniqo'
+                      ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-sm shadow-emerald-500/10'
                       : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                   }`}
                 >
                   <div className="flex items-center space-x-1.5">
-                    <span className="text-[10px] shrink-0">🍵</span>
-                    <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-[#4D775E] to-[#C5A880] shadow-inner shrink-0" />
+                    <span className="text-[10px] shrink-0">🟢</span>
+                    <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-[#10b981] to-[#34d399] shadow-inner shrink-0" />
                   </div>
-                  <span className="text-[10px] tracking-tight whitespace-nowrap block w-full truncate">
-                    {lang === 'tr' ? 'Sakin Matcha' : 'Calming Matcha'}
+                  <span className="text-[10px] tracking-tight whitespace-nowrap block w-full truncate font-extrabold text-emerald-600 dark:text-emerald-400">
+                    {lang === 'tr' ? 'Feniqo Yeşili' : 'Feniqo Green'}
                   </span>
                 </button>
               </div>
@@ -858,22 +904,20 @@ export const Settings: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => handleLangChange('tr')}
-                  className={`py-3 px-4 rounded-xl border font-semibold text-xs flex flex-col items-center justify-center space-y-1.5 transition-all ${
-                    lang === 'tr'
+                  className={`py-3 px-4 rounded-xl border font-semibold text-xs flex flex-col items-center justify-center space-y-1.5 transition-all ${lang === 'tr'
                       ? 'border-brand-500 bg-brand-500/10 text-brand-600 dark:text-brand-400'
                       : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                  }`}
+                    }`}
                 >
                   <span className="text-base" role="img" aria-label="Turkey">🇹🇷</span>
                   <span>{t.turkish}</span>
                 </button>
                 <button
                   onClick={() => handleLangChange('en')}
-                  className={`py-3 px-4 rounded-xl border font-semibold text-xs flex flex-col items-center justify-center space-y-1.5 transition-all ${
-                    lang === 'en'
+                  className={`py-3 px-4 rounded-xl border font-semibold text-xs flex flex-col items-center justify-center space-y-1.5 transition-all ${lang === 'en'
                       ? 'border-brand-500 bg-brand-500/10 text-brand-600 dark:text-brand-400'
                       : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                  }`}
+                    }`}
                 >
                   <span className="text-base" role="img" aria-label="United States">🇺🇸</span>
                   <span>{t.english}</span>
@@ -896,11 +940,10 @@ export const Settings: React.FC = () => {
                 {/* 1. Real-time */}
                 <button
                   onClick={() => handleRatesRefreshChange('realtime')}
-                  className={`py-3.5 px-3 rounded-2xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center relative group overflow-hidden ${
-                    ratesRefresh === 'realtime'
+                  className={`py-3.5 px-3 rounded-2xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center relative group overflow-hidden ${ratesRefresh === 'realtime'
                       ? 'border-brand-500 bg-brand-500/10 text-brand-600 dark:text-brand-400 shadow-md shadow-brand-500/5'
                       : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center space-x-1.5 z-10">
                     <Zap size={14} className={ratesRefresh === 'realtime' ? 'text-amber-500 animate-pulse' : 'text-slate-400 group-hover:text-amber-500 transition-colors'} />
@@ -914,11 +957,10 @@ export const Settings: React.FC = () => {
                 {/* 2. Daily Cache */}
                 <button
                   onClick={() => handleRatesRefreshChange('daily')}
-                  className={`py-3.5 px-3 rounded-2xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center relative group overflow-hidden ${
-                    ratesRefresh === 'daily'
+                  className={`py-3.5 px-3 rounded-2xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center relative group overflow-hidden ${ratesRefresh === 'daily'
                       ? 'border-brand-500 bg-brand-500/10 text-brand-600 dark:text-brand-400 shadow-md shadow-brand-500/5'
                       : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center space-x-1.5 z-10">
                     <Clock size={14} className={ratesRefresh === 'daily' ? 'text-indigo-500 animate-pulse' : 'text-slate-400 group-hover:text-indigo-500 transition-colors'} />
@@ -932,11 +974,10 @@ export const Settings: React.FC = () => {
                 {/* 3. Manual */}
                 <button
                   onClick={() => handleRatesRefreshChange('manual')}
-                  className={`py-3.5 px-3 rounded-2xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center relative group overflow-hidden ${
-                    ratesRefresh === 'manual'
+                  className={`py-3.5 px-3 rounded-2xl border font-bold text-xs flex flex-col items-center justify-center space-y-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center relative group overflow-hidden ${ratesRefresh === 'manual'
                       ? 'border-brand-500 bg-brand-500/10 text-brand-600 dark:text-brand-400 shadow-md shadow-brand-500/5'
                       : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center space-x-1.5 z-10">
                     <RefreshCw size={14} className={ratesRefresh === 'manual' ? 'text-emerald-500 animate-pulse' : 'text-slate-400 group-hover:text-emerald-500 transition-colors'} />
@@ -974,8 +1015,8 @@ export const Settings: React.FC = () => {
                 </span>
               </div>
               <p className="text-[10px] text-slate-400 dark:text-slate-500 pl-1 leading-relaxed font-medium">
-                {lang === 'tr' 
-                  ? 'Aylık gelirinizden biriktirmek istediğiniz asgari hedef oranı belirler. Raporlar sayfasındaki finansal analizler ve performans göstergeleri bu hedefe göre dinamik olarak güncellenir.' 
+                {lang === 'tr'
+                  ? 'Aylık gelirinizden biriktirmek istediğiniz asgari hedef oranı belirler. Raporlar sayfasındaki finansal analizler ve performans göstergeleri bu hedefe göre dinamik olarak güncellenir.'
                   : 'Defines the minimum target savings rate from your monthly income. Financial digests and performance metrics in the Reports page are dynamically updated based on this target.'}
               </p>
             </div>
@@ -1074,7 +1115,7 @@ export const Settings: React.FC = () => {
           {/* AI COACH SECTION */}
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center space-x-2 pb-3 border-b border-slate-100 dark:border-slate-800/60">
-              <Brain size={18} className="text-indigo-500" />
+              <Lightbulb size={18} className="text-brand-500" />
               <span>{t.aiCoachTitle}</span>
             </h3>
 
@@ -1086,27 +1127,136 @@ export const Settings: React.FC = () => {
             <div className="pt-1">
               <button
                 onClick={triggerAiAnalysis}
-                className="premium-btn-primary bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500 flex items-center space-x-2 py-2 px-4 text-xs font-semibold shadow-md shadow-indigo-500/10"
+                className="premium-btn-primary bg-brand-600 hover:bg-brand-700 focus:ring-brand-500 flex items-center space-x-2 py-2 px-4 text-xs font-semibold shadow-md shadow-brand-500/10"
                 disabled={aiLoading}
               >
-                {aiLoading ? <RefreshCw size={14} className="animate-spin" /> : <Brain size={14} />}
+                {aiLoading ? <RefreshCw size={14} className="animate-spin" /> : <Lightbulb size={14} />}
                 <span>{t.generateAnalysis}</span>
               </button>
             </div>
 
             {/* Output markdown */}
             {aiLoading && (
-              <div className="p-8 text-center text-xs font-semibold text-indigo-500 dark:text-indigo-400 space-y-2 animate-pulse bg-indigo-500/5 rounded-2xl border border-indigo-100 dark:border-indigo-950/20">
-                <RefreshCw size={24} className="animate-spin mx-auto text-indigo-500" />
+              <div className="p-8 text-center text-xs font-semibold text-brand-500 dark:text-brand-400 space-y-2 animate-pulse bg-brand-500/5 rounded-2xl border border-brand-100 dark:border-brand-950/20">
+                <RefreshCw size={24} className="animate-spin mx-auto text-brand-500" />
                 <p>{t.gatheringData}</p>
               </div>
             )}
 
             {showAiReport && (
-              <div className="p-5 bg-indigo-500/5 dark:bg-indigo-500/5 rounded-2xl border border-indigo-100 dark:border-indigo-950/30 text-slate-800 dark:text-slate-200 text-xs leading-relaxed space-y-3.5 animate-in slide-in-from-top-2 duration-300">
-                <div className="prose dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 space-y-2 whitespace-pre-line">
-                  {aiAdviceText}
-                </div>
+              <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
+                {aiAnalysis.isEmpty ? (
+                  <div className="p-5 bg-brand-500/5 rounded-2xl border border-brand-100 dark:border-brand-950/30 text-slate-700 dark:text-slate-300 text-xs text-center font-medium">
+                    {aiAnalysis.message}
+                  </div>
+                ) : (
+                  <div className="bg-brand-500/5 rounded-2xl border border-brand-100 dark:border-brand-950/30 p-5 space-y-4">
+                    {/* Header */}
+                    <div className="flex items-center space-x-2.5 pb-3 border-b border-brand-100 dark:border-brand-950/20">
+                      <div className="w-8 h-8 rounded-lg bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center text-brand-600 dark:text-brand-400">
+                        <Lightbulb size={18} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-slate-900 dark:text-white">
+                          {t.aiReportTitle}
+                        </h4>
+                        <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                          {lang === 'tr' ? 'Finansal Analiz Sonuçları' : 'Financial Analysis Results'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Summary metrics grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-xl flex flex-col justify-between">
+                        <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block mb-1">
+                          {lang === 'tr' ? 'Toplam Gelir' : 'Total Income'}
+                        </span>
+                        <strong className="text-base font-extrabold text-slate-800 dark:text-slate-100">
+                          {formatCurrency(aiAnalysis.totalInc || 0, currency)}
+                        </strong>
+                      </div>
+                      <div className="p-3 bg-rose-500/5 border border-rose-500/10 rounded-xl flex flex-col justify-between">
+                        <span className="text-[9px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-wider block mb-1">
+                          {lang === 'tr' ? 'Toplam Harcama' : 'Total Expense'}
+                        </span>
+                        <strong className="text-base font-extrabold text-slate-800 dark:text-slate-100">
+                          {formatCurrency(aiAnalysis.totalExp || 0, currency)}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-600 dark:text-slate-400 font-semibold pl-0.5">
+                      {t.aiReportSummary
+                        .replace('{totalInc}', formatCurrency(aiAnalysis.totalInc || 0, currency))
+                        .replace('{totalExp}', formatCurrency(aiAnalysis.totalExp || 0, currency))
+                      }
+                    </p>
+
+                    {/* Savings/Deficit Status Card */}
+                    <div className={`p-4 rounded-xl border ${
+                      aiAnalysis.statusType === 'deficit'
+                        ? 'bg-rose-500/5 border-rose-500/25 text-rose-700 dark:text-rose-400'
+                        : aiAnalysis.statusType === 'savings_excellent'
+                        ? 'bg-emerald-500/5 border-emerald-500/25 text-emerald-700 dark:text-emerald-400'
+                        : 'bg-amber-500/5 border-amber-500/25 text-amber-700 dark:text-amber-400'
+                    }`}>
+                      <div className="flex items-start space-x-2.5">
+                        {aiAnalysis.statusType === 'deficit' ? (
+                          <AlertTriangle size={16} className="text-rose-500 shrink-0 mt-0.5" />
+                        ) : aiAnalysis.statusType === 'savings_excellent' ? (
+                          <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                        ) : (
+                          <Zap size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                        )}
+                        <div className="space-y-1">
+                          <span className="text-xs font-black uppercase tracking-wider block">
+                            {aiAnalysis.statusTitle}
+                          </span>
+                          <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
+                            {aiAnalysis.statusText}
+                          </p>
+                        </div>
+                      </div>
+                      <div className={`mt-3 pt-3 border-t flex items-start space-x-2 ${
+                        aiAnalysis.statusType === 'deficit'
+                          ? 'border-rose-500/10'
+                          : aiAnalysis.statusType === 'savings_excellent'
+                          ? 'border-emerald-500/10'
+                          : 'border-amber-500/10'
+                      }`}>
+                        <Zap size={12} className="text-brand-500 shrink-0 mt-0.5" />
+                        <p className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold leading-relaxed">
+                          {aiAnalysis.statusAdvice}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Highest Expense Category Card */}
+                    {aiAnalysis.topCatId && (
+                      <div className="p-4 bg-brand-500/5 border border-brand-500/10 rounded-xl space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-black text-brand-600 dark:text-brand-400 flex items-center space-x-1.5 uppercase tracking-wider">
+                            <span className="w-1.5 h-1.5 rounded-full bg-brand-500" />
+                            <span>{lang === 'tr' ? 'En Yüksek Harcama' : 'Highest Expense'}</span>
+                          </span>
+                          {aiAnalysis.isFixedExpense ? (
+                            <span className="text-[9px] font-black text-slate-600 dark:text-slate-400 bg-slate-500/15 dark:bg-slate-400/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-slate-200/20">
+                              {lang === 'tr' ? 'Sabit / Zorunlu' : 'Fixed / Essential'}
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 bg-amber-500/15 dark:bg-amber-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-amber-500/10">
+                              {lang === 'tr' ? 'Değişken / Esnek' : 'Variable / Flexible'}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-semibold pl-0.5">
+                          {aiAnalysis.highestExpenseText}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1130,7 +1280,7 @@ export const Settings: React.FC = () => {
               <p className="text-[10px] text-slate-400 dark:text-slate-500 pl-0.5 leading-relaxed font-medium">
                 {t.exportCsvDesc}
               </p>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 {/* Gelir/Gider (CSV) */}
                 <button
@@ -1236,11 +1386,11 @@ export const Settings: React.FC = () => {
                   💾 {t.backupTitle}
                 </h4>
                 <p className="text-[10px] text-slate-400 dark:text-slate-500 pl-0.5 leading-relaxed font-medium">
-                  {isDemo 
-                    ? t.backupDesc 
+                  {isDemo
+                    ? t.backupDesc
                     : (lang === 'tr'
-                        ? 'Tüm verilerinizin bulut dışı fiziki bir kopyasını (.json) indirir. Bulut dışında bağımsız bir arşiv olarak saklamak veya başka bir hesaba aktarmak için kullanabilirsiniz.'
-                        : 'Downloads an offline physical copy (.json) of all your data. Perfect for keeping an independent archive outside the cloud or migrating accounts.')}
+                      ? 'Tüm verilerinizin bulut dışı fiziki bir kopyasını (.json) indirir. Bulut dışında bağımsız bir arşiv olarak saklamak veya başka bir hesaba aktarmak için kullanabilirsiniz.'
+                      : 'Downloads an offline physical copy (.json) of all your data. Perfect for keeping an independent archive outside the cloud or migrating accounts.')}
                 </p>
                 <button
                   onClick={handleExportJSON}
@@ -1348,7 +1498,7 @@ export const Settings: React.FC = () => {
                       onChange={handleFileChange}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
-                    
+
                     <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400 group-hover:text-brand-500 group-hover:scale-105 transition-all duration-200">
                       <Upload size={22} />
                     </div>
@@ -1370,21 +1520,21 @@ export const Settings: React.FC = () => {
 
         {/* Right column: Safety & Reset */}
         <div className="lg:col-span-1 space-y-6">
-          
+
           {/* PWA / Mobil Kurulum Kartı */}
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center space-x-2.5 pb-3 border-b border-slate-100 dark:border-slate-800/60">
               <span className="text-lg">📱</span>
               <span>{lang === 'tr' ? 'Mobil Kurulum' : 'Mobile Installation'}</span>
             </h3>
-            
+
             {isAppInstalled ? (
               <div className="space-y-3">
                 <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-start gap-2.5">
                   <span className="text-base mt-0.5">✓</span>
                   <div className="text-xs leading-relaxed font-semibold">
-                    {lang === 'tr' 
-                      ? 'MoneyMate şu anda cihazınızda kurulu ve yerel bir mobil uygulama olarak çalışıyor!' 
+                    {lang === 'tr'
+                      ? 'MoneyMate şu anda cihazınızda kurulu ve yerel bir mobil uygulama olarak çalışıyor!'
                       : 'MoneyMate is currently installed and running as a native app!'}
                   </div>
                 </div>
@@ -1418,7 +1568,7 @@ export const Settings: React.FC = () => {
                 </p>
                 <button
                   onClick={() => setShowIosGuide(true)}
-                  className="premium-btn-primary w-full py-2.5 text-xs bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/10 flex items-center justify-center space-x-2 cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  className="premium-btn-primary w-full py-2.5 text-xs bg-brand-600 hover:bg-brand-700 shadow-md shadow-brand-500/10 flex items-center justify-center space-x-2 cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all"
                 >
                   <span>📲</span>
                   <span>{lang === 'tr' ? 'iOS Kurulum Rehberi' : 'iOS Installation Guide'}</span>
@@ -1449,15 +1599,14 @@ export const Settings: React.FC = () => {
               <Shield size={18} className="text-emerald-500" />
               <span>{t.sessionInfo}</span>
             </h3>
-            
+
             <div className="space-y-3.5 text-xs">
               <div className="flex justify-between items-center py-1">
                 <span className="text-slate-400 font-semibold">{t.sessionType}</span>
-                <span className={`px-2 py-0.5 rounded font-bold uppercase text-[9px] ${
-                  isDemo 
-                    ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400' 
+                <span className={`px-2 py-0.5 rounded font-bold uppercase text-[9px] ${isDemo
+                    ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400'
                     : 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400'
-                }`}>
+                  }`}>
                   {isDemo ? t.demoMode : t.cloudMode}
                 </span>
               </div>
@@ -1476,7 +1625,7 @@ export const Settings: React.FC = () => {
               <Trash2 size={18} />
               <span>{t.dangerZone}</span>
             </h3>
-            
+
             <p className="text-xs text-slate-400 dark:text-slate-500 leading-relaxed">
               {t.dangerZoneDesc}
             </p>
@@ -1524,7 +1673,7 @@ export const Settings: React.FC = () => {
                 {lang === 'tr' ? 'iOS Cihazınıza Yükleyin' : 'Install MoneyMate on iOS'}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                {lang === 'tr' 
+                {lang === 'tr'
                   ? 'MoneyMate\'i ana ekranınıza eklemek için Safari\'de aşağıdaki adımları takip edin:'
                   : 'Follow these simple steps in Safari to add to your Home Screen:'}
               </p>

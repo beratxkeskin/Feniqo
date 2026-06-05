@@ -370,16 +370,16 @@ export const Dashboard: React.FC = () => {
           })}
 
           {/* AI Coach Alert Suggestion Banner */}
-          <div className="relative overflow-hidden p-4 rounded-2xl border border-indigo-500/20 bg-white dark:bg-slate-900 shadow-sm flex items-start space-x-3.5 mt-2 animate-in fade-in slide-in-from-top-1 duration-300 group hover:shadow-md transition-shadow">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none transition-opacity group-hover:bg-indigo-500/20" />
+          <div className="relative overflow-hidden p-4 rounded-2xl border border-brand-500/20 bg-white dark:bg-slate-900 shadow-sm flex items-start space-x-3.5 mt-2 animate-in fade-in slide-in-from-top-1 duration-300 group hover:shadow-md transition-shadow">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none transition-opacity group-hover:bg-brand-500/20" />
             
-            <div className="p-2.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center shrink-0 ring-1 ring-indigo-500/20 z-10 group-hover:scale-105 transition-transform duration-300">
-              <Icons.Brain size={18} className="animate-pulse" />
+            <div className="p-2.5 bg-brand-500/5 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-xl flex items-center justify-center shrink-0 ring-1 ring-brand-500/20 z-10 group-hover:scale-105 transition-transform duration-300">
+              <Icons.Lightbulb size={18} className="animate-pulse" />
             </div>
             <div className="space-y-1.5 z-10">
-              <h5 className="font-bold text-xs uppercase tracking-widest text-indigo-700 dark:text-indigo-400 flex items-center gap-2">
-                <span>{user?.lang === 'en' ? 'AI Financial Coach Alert' : 'AI Finansal Koç Bildirimi'}</span>
-                <span className="text-[9px] bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full font-bold tracking-widest text-indigo-600 dark:text-indigo-400 animate-pulse">
+              <h5 className="font-bold text-xs uppercase tracking-widest text-brand-700 dark:text-brand-400 flex items-center gap-2">
+                <span>{user?.lang === 'en' ? 'Feniqo Smart Insight Alert' : 'Feniqo Akıllı Öngörü Bildirimi'}</span>
+                <span className="text-[9px] bg-brand-500/10 border border-brand-500/20 px-2 py-0.5 rounded-full font-bold tracking-widest text-brand-600 dark:text-brand-400 animate-pulse">
                   {user?.lang === 'en' ? 'Live Analysis' : 'Canlı Analiz'}
                 </span>
               </h5>
@@ -396,18 +396,18 @@ export const Dashboard: React.FC = () => {
       )}
 
       {/* AI PREDICTIVE ANALYTICS CARD */}
-      <div className="relative overflow-hidden p-5 rounded-2xl border border-indigo-500/20 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-all duration-300 group">
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none transition-opacity group-hover:bg-indigo-500/20" />
+      <div className="relative overflow-hidden p-5 rounded-2xl border border-brand-500/20 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-all duration-300 group">
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-brand-500/10 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none transition-opacity group-hover:bg-brand-500/20" />
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 relative z-10">
           <div className="flex items-center space-x-4">
-            <div className="p-3 bg-indigo-50 dark:bg-slate-800 rounded-xl shadow-sm border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 ring-1 ring-indigo-500/10 group-hover:scale-105 transition-transform duration-300">
-              <Icons.Sparkles size={22} className="animate-pulse" />
+            <div className="p-3 bg-brand-500/5 dark:bg-slate-800 rounded-xl shadow-sm border border-brand-500/20 text-brand-600 dark:text-brand-400 ring-1 ring-brand-500/10 group-hover:scale-105 transition-transform duration-300">
+              <Icons.TrendingUp size={22} className="animate-pulse" />
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
                 Akıllı Harcama Tahmini
-                <span className="text-[9px] uppercase tracking-widest bg-indigo-500/10 border border-indigo-500/20 text-indigo-700 dark:text-indigo-400 px-2 py-0.5 rounded-full font-bold">Yapay Zeka</span>
+                <span className="text-[9px] uppercase tracking-widest bg-brand-500/10 border border-brand-500/20 text-brand-700 dark:text-brand-400 px-2 py-0.5 rounded-full font-bold">{user?.lang === 'en' ? 'Predictive' : 'Prediktif'}</span>
               </h3>
               <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1 max-w-lg leading-relaxed">
                 {forecastData.message}
@@ -415,7 +415,7 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center space-x-6 md:border-l border-indigo-500/20 md:pl-6">
+          <div className="flex items-center space-x-6 md:border-l border-brand-500/20 md:pl-6">
             <div>
               <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Ay Sonu Tahmini</p>
               <div className="flex items-baseline space-x-2">
@@ -555,7 +555,7 @@ export const Dashboard: React.FC = () => {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-          <div className="relative w-full max-w-xl overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 z-10 animate-in fade-in zoom-in-95 duration-200">
+          <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto custom-scrollbar rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 z-10 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800/60 mb-5">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">Yeni Gelir / Gider İşlemi Ekle</h3>
               <button 

@@ -34,10 +34,13 @@ html.theme-sunset {
   --brand-100: 250 238 218;
   --brand-200: 245 222 183;
   --brand-300: 235 196 134;
-  --brand-400: 212 83 126; /* primary-accent (rose transition) */
-  --brand-500: 186 117 23;  /* primary (gold luxury) */
+  --brand-400: 212 83 126;
+  /* primary-accent (rose transition) */
+  --brand-500: 186 117 23;
+  /* primary (gold luxury) */
   --brand-600: 164 99 15;
-  --brand-700: 133 79 11;   /* primary-dark */
+  --brand-700: 133 79 11;
+  /* primary-dark */
   --brand-800: 100 59 6;
   --brand-900: 72 42 2;
 }
@@ -48,30 +51,40 @@ html.theme-rose {
   --brand-100: 251 234 240;
   --brand-200: 246 204 215;
   --brand-300: 233 151 175;
-  --brand-400: 213 96 130;  /* primary-accent */
-  --brand-500: 153 53 86;   /* primary (bold crimson pink) */
+  --brand-400: 213 96 130;
+  /* primary-accent */
+  --brand-500: 153 53 86;
+  /* primary (bold crimson pink) */
   --brand-600: 135 43 75;
-  --brand-700: 114 36 62;   /* primary-dark */
+  --brand-700: 114 36 62;
+  /* primary-dark */
   --brand-800: 92 29 50;
   --brand-900: 65 20 35;
 }
 
-html.theme-ocean {
-  /* ☕ Sakin Matcha (Calming Matcha - Pastel & Relaxing) */
-  --brand-50: 244 247 245;
-  --brand-100: 228 236 231;
-  --brand-200: 199 217 206;
-  --brand-300: 159 189 170;
-  --brand-400: 114 156 129;
-  --brand-500: 77 119 94;   /* primary (organic matcha green) */
-  --brand-600: 61 95 75;
-  --brand-700: 49 76 60;
-  --brand-800: 38 59 47;
-  --brand-900: 26 40 32;
+
+html.theme-feniqo {
+  /* 🟢 Feniqo Yeşili (Official Brand Vibrant Emerald Green) */
+  --brand-50: 236 253 245;
+  --brand-100: 209 250 229;
+  --brand-200: 167 243 208;
+  --brand-300: 110 231 183;
+  --brand-400: 52 211 153;
+  --brand-500: 16 185 129;  /* primary (official vibrant green) */
+  --brand-600: 5 150 105;
+  --brand-700: 4 120 87;    /* primary-dark */
+  --brand-800: 6 95 70;
+  --brand-900: 6 78 59;
+
+  /* 🦅 Zümrüt Anka Kuşu Brand Highlights (Phoenix Gold & Ember Orange) */
+  --brand-gold: 245 158 11;    /* #F59E0B */
+  --brand-orange: 249 115 22;  /* #F97316 */
 }
 
 @layer base {
-  html, body {
+
+  html,
+  body {
     @apply bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-200;
   }
 }
@@ -82,6 +95,7 @@ html.theme-ocean {
     scrollbar-width: thin;
     scrollbar-color: #cbd5e1 #f8fafc;
   }
+
   .dark * {
     scrollbar-color: #475569 #0f172a;
   }
@@ -128,7 +142,21 @@ html.theme-ocean {
   scrollbar-color: #475569 transparent;
 }
 
+/* Kaydırma çubuğunu gizleme sınıfı */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  /* IE ve Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari ve Opera */
+}
+
 @layer components {
+
   /* Glassmorphism Styles */
   .glass-panel {
     background: rgba(255, 255, 255, 0.75);
@@ -164,9 +192,12 @@ html.theme-ocean {
 
 /* PWA Özel Animasyonları */
 @keyframes bounce-subtle {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translate(-50%, 0);
   }
+
   50% {
     transform: translate(-50%, -6px);
   }
@@ -202,16 +233,18 @@ html.theme-sunset body,
 html.theme-sunset .min-h-screen {
   background-color: #faf6ee !important;
   background-image: radial-gradient(at 0% 0%, rgba(212, 83, 126, 0.05) 0px, transparent 50%),
-                    radial-gradient(at 100% 100%, rgba(186, 117, 23, 0.04) 0px, transparent 50%) !important;
+    radial-gradient(at 100% 100%, rgba(186, 117, 23, 0.04) 0px, transparent 50%) !important;
   background-attachment: fixed;
 }
+
 html.theme-sunset.dark body,
 html.theme-sunset.dark .bg-slate-950,
 html.theme-sunset.dark .dark\:bg-slate-950,
 html.theme-sunset.dark .min-h-screen {
-  background-color: #211814 !important; /* Lighter Warm Golden Black */
+  background-color: #211814 !important;
+  /* Lighter Warm Golden Black */
   background-image: radial-gradient(at 0% 0%, rgba(186, 117, 23, 0.09) 0px, transparent 50%),
-                    radial-gradient(at 100% 100%, rgba(212, 83, 126, 0.09) 0px, transparent 50%) !important;
+    radial-gradient(at 100% 100%, rgba(212, 83, 126, 0.09) 0px, transparent 50%) !important;
   background-attachment: fixed;
 }
 
@@ -221,12 +254,14 @@ html.theme-sunset:not(.dark) .glass-panel {
   background-color: #fdfbf7 !important;
   border-color: rgba(235, 196, 134, 0.35) !important;
 }
+
 /* Dark mode panels */
 html.theme-sunset.dark .bg-slate-900,
 html.theme-sunset.dark .dark\:bg-slate-900,
 html.theme-sunset.dark .glass-panel,
 html.theme-sunset.dark aside {
-  background-color: #2e231c !important; /* Lighter Golden Dark Chocolate Card */
+  background-color: #2e231c !important;
+  /* Lighter Golden Dark Chocolate Card */
   border-color: rgba(133, 79, 11, 0.3) !important;
 }
 
@@ -235,6 +270,7 @@ html.theme-sunset:not(.dark) .border-slate-100,
 html.theme-sunset:not(.dark) .border-slate-200 {
   border-color: rgba(235, 196, 134, 0.3) !important;
 }
+
 /* Dark mode borders */
 html.theme-sunset.dark .dark\:border-slate-800,
 html.theme-sunset.dark .border-slate-800,
@@ -248,9 +284,11 @@ html.theme-sunset.dark .border-r {
 html.theme-sunset.dark ::-webkit-scrollbar-track {
   background-color: transparent;
 }
+
 html.theme-sunset.dark ::-webkit-scrollbar-thumb {
   background-color: rgba(186, 117, 23, 0.3);
 }
+
 html.theme-sunset.dark ::-webkit-scrollbar-thumb:hover {
   background-color: rgba(186, 117, 23, 0.5);
 }
@@ -261,16 +299,18 @@ html.theme-rose body,
 html.theme-rose .min-h-screen {
   background-color: #fdf8f9 !important;
   background-image: radial-gradient(at 0% 0%, rgba(213, 96, 130, 0.05) 0px, transparent 50%),
-                    radial-gradient(at 100% 100%, rgba(153, 53, 86, 0.04) 0px, transparent 50%) !important;
+    radial-gradient(at 100% 100%, rgba(153, 53, 86, 0.04) 0px, transparent 50%) !important;
   background-attachment: fixed;
 }
+
 html.theme-rose.dark body,
 html.theme-rose.dark .bg-slate-950,
 html.theme-rose.dark .dark\:bg-slate-950,
 html.theme-rose.dark .min-h-screen {
-  background-color: #22151b !important; /* Lighter Crimson Dark Mode Background */
+  background-color: #22151b !important;
+  /* Lighter Crimson Dark Mode Background */
   background-image: radial-gradient(at 0% 0%, rgba(153, 53, 86, 0.1) 0px, transparent 50%),
-                    radial-gradient(at 100% 100%, rgba(213, 96, 130, 0.08) 0px, transparent 50%) !important;
+    radial-gradient(at 100% 100%, rgba(213, 96, 130, 0.08) 0px, transparent 50%) !important;
   background-attachment: fixed;
 }
 
@@ -280,12 +320,14 @@ html.theme-rose:not(.dark) .glass-panel {
   background-color: #fefafb !important;
   border-color: rgba(246, 204, 215, 0.4) !important;
 }
+
 /* Dark mode panels */
 html.theme-rose.dark .bg-slate-900,
 html.theme-rose.dark .dark\:bg-slate-900,
 html.theme-rose.dark .glass-panel,
 html.theme-rose.dark aside {
-  background-color: #2d1e25 !important; /* Lighter Burgundy Dark Card */
+  background-color: #2d1e25 !important;
+  /* Lighter Burgundy Dark Card */
   border-color: rgba(114, 36, 62, 0.3) !important;
 }
 
@@ -294,6 +336,7 @@ html.theme-rose:not(.dark) .border-slate-100,
 html.theme-rose:not(.dark) .border-slate-200 {
   border-color: rgba(246, 204, 215, 0.35) !important;
 }
+
 /* Dark mode borders */
 html.theme-rose.dark .dark\:border-slate-800,
 html.theme-rose.dark .border-slate-800,
@@ -306,86 +349,180 @@ html.theme-rose.dark .border-r {
 html.theme-rose.dark ::-webkit-scrollbar-track {
   background-color: transparent;
 }
+
 html.theme-rose.dark ::-webkit-scrollbar-thumb {
   background-color: rgba(153, 53, 86, 0.3);
 }
+
 html.theme-rose.dark ::-webkit-scrollbar-thumb:hover {
   background-color: rgba(153, 53, 86, 0.5);
 }
 
-/* 3. SAKİN MATCHA (Calming Matcha) OVERRIDES */
+
+/* 4. FENİQO YEŞİLİ (Feniqo Brand Green) OVERRIDES */
 /* Immersive Page Body Backgrounds */
-html.theme-ocean body,
-html.theme-ocean .min-h-screen {
-  background-color: #f3f6f4 !important;
-  background-image: radial-gradient(at 0% 0%, rgba(77, 119, 94, 0.04) 0px, transparent 50%),
-                    radial-gradient(at 100% 100%, rgba(197, 168, 128, 0.03) 0px, transparent 50%) !important;
+html.theme-feniqo body,
+html.theme-feniqo .min-h-screen {
+  background-color: #f4faf7 !important; /* Pristine light mint green */
+  background-image: radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.05) 0px, transparent 50%),
+                    radial-gradient(at 100% 100%, rgba(5, 150, 105, 0.03) 0px, transparent 50%) !important;
   background-attachment: fixed;
 }
-html.theme-ocean.dark body,
-html.theme-ocean.dark .bg-slate-950,
-html.theme-ocean.dark .dark\:bg-slate-950,
-html.theme-ocean.dark .min-h-screen {
-  background-color: #121e18 !important; /* Lighter Moss-Forest Black Background */
-  background-image: radial-gradient(at 0% 0%, rgba(77, 119, 94, 0.08) 0px, transparent 50%),
-                    radial-gradient(at 100% 100%, rgba(197, 168, 128, 0.06) 0px, transparent 50%) !important;
+html.theme-feniqo.dark body,
+html.theme-feniqo.dark .bg-slate-950,
+html.theme-feniqo.dark .dark\:bg-slate-950,
+html.theme-feniqo.dark .min-h-screen {
+  background-color: #0f1c16 !important; /* Extremely dark lush emerald forest */
+  background-image: radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.09) 0px, transparent 50%),
+                    radial-gradient(at 100% 100%, rgba(5, 150, 105, 0.06) 0px, transparent 50%) !important;
   background-attachment: fixed;
 }
 
 /* Light mode panels */
-html.theme-ocean:not(.dark) .bg-white,
-html.theme-ocean:not(.dark) .glass-panel {
-  background-color: #ffffff !important;
-  border-color: rgba(199, 217, 206, 0.45) !important;
+html.theme-feniqo:not(.dark) .bg-white,
+html.theme-feniqo:not(.dark) .glass-panel {
+  background-color: #fbfdfc !important;
+  border-color: rgba(167, 243, 208, 0.35) !important;
 }
 /* Dark mode panels */
-html.theme-ocean.dark .bg-slate-900,
-html.theme-ocean.dark .dark\:bg-slate-900,
-html.theme-ocean.dark .glass-panel,
-html.theme-ocean.dark aside {
-  background-color: #1a2b23 !important; /* Lighter Sage-Charcoal Card */
-  border-color: rgba(77, 119, 94, 0.25) !important;
+html.theme-feniqo.dark .bg-slate-900,
+html.theme-feniqo.dark .dark\:bg-slate-900,
+html.theme-feniqo.dark .glass-panel,
+html.theme-feniqo.dark aside {
+  background-color: #16281e !important; /* Dark emerald wood card */
+  border-color: rgba(4, 120, 87, 0.25) !important;
 }
 
 /* Light mode borders */
-html.theme-ocean:not(.dark) .border-slate-100,
-html.theme-ocean:not(.dark) .border-slate-200 {
-  border-color: rgba(199, 217, 206, 0.35) !important;
+html.theme-feniqo:not(.dark) .border-slate-100,
+html.theme-feniqo:not(.dark) .border-slate-200 {
+  border-color: rgba(167, 243, 208, 0.3) !important;
 }
 /* Dark mode borders */
-html.theme-ocean.dark .dark\:border-slate-800,
-html.theme-ocean.dark .border-slate-800,
-html.theme-ocean.dark .border-slate-800\/60,
-html.theme-ocean.dark .dark\:border-slate-800\/60,
-html.theme-ocean.dark .border-r {
-  border-color: rgba(77, 119, 94, 0.2) !important;
+html.theme-feniqo.dark .dark\:border-slate-800,
+html.theme-feniqo.dark .border-slate-800,
+html.theme-feniqo.dark .border-slate-800\/60,
+html.theme-feniqo.dark .dark\:border-slate-800\/60,
+html.theme-feniqo.dark .border-r {
+  border-color: rgba(4, 120, 87, 0.2) !important;
 }
 
-/* Matcha Scrollbars */
-html.theme-ocean.dark ::-webkit-scrollbar-track {
+/* Feniqo Scrollbars */
+html.theme-feniqo.dark ::-webkit-scrollbar-track {
   background-color: transparent;
 }
-html.theme-ocean.dark ::-webkit-scrollbar-thumb {
-  background-color: rgba(77, 119, 94, 0.3);
+html.theme-feniqo.dark ::-webkit-scrollbar-thumb {
+  background-color: rgba(16, 185, 129, 0.3);
 }
-html.theme-ocean.dark ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(77, 119, 94, 0.5);
+html.theme-feniqo.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(16, 185, 129, 0.5);
+}
+
+/* Custom premium classes for Feniqo */
+html.theme-feniqo .text-gold-gradient {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 50%, #059669 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
+html.theme-feniqo.dark .text-gold-gradient {
+  background: linear-gradient(135deg, #a7f3d0 0%, #34d399 50%, #059669 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
+html.theme-feniqo .border-gold-gradient {
+  border-image: linear-gradient(135deg, #10b981, #059669) 1;
+}
+
+/* Hover glowing effects */
+html.theme-feniqo .glow-hover {
+  transition: all 0.3s ease;
+}
+html.theme-feniqo:not(.dark) .glow-hover:hover {
+  border-color: rgba(167, 243, 208, 0.5) !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.15) !important;
+}
+html.theme-feniqo.dark .glow-hover:hover {
+  border-color: rgba(4, 120, 87, 0.4) !important;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.2) !important;
+}
+
+/* Sidebar/Navbar Logo Glow and Gradient Text for Feniqo Theme */
+html.theme-feniqo aside img[alt="Feniqo Logo"],
+html.theme-feniqo header img[alt="Feniqo Logo"],
+html.theme-feniqo div img[alt="Feniqo Logo"] {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(167, 243, 208, 0.3) !important;
+}
+html.theme-feniqo aside img[alt="Feniqo Logo"]:hover,
+html.theme-feniqo header img[alt="Feniqo Logo"]:hover,
+html.theme-feniqo div img[alt="Feniqo Logo"]:hover {
+  transform: scale(1.08) rotate(3deg);
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.45) !important;
+}
+
+/* Gradient Titles */
+html.theme-feniqo h1.text-xl,
+html.theme-feniqo h1.text-lg,
+html.theme-feniqo span.font-bold.text-slate-900,
+html.theme-feniqo span.font-bold.text-lg {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 50%, #059669 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.025em;
+}
+
+html.theme-feniqo.dark h1.text-xl,
+html.theme-feniqo.dark h1.text-lg,
+html.theme-feniqo.dark span.font-bold.text-slate-900,
+html.theme-feniqo.dark span.font-bold.text-lg,
+html.theme-feniqo.dark span.font-bold.dark\:text-white {
+  background: linear-gradient(135deg, #a7f3d0 0%, #34d399 50%, #059669 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.025em;
 }
 
 /* Notification Bell Shaking Keyframes */
 @keyframes bell-shake {
-  0%, 100% { transform: rotate(0); }
-  15% { transform: rotate(10deg); }
-  30% { transform: rotate(-10deg); }
-  45% { transform: rotate(5deg); }
-  60% { transform: rotate(-5deg); }
-  75% { transform: rotate(2deg); }
-  85% { transform: rotate(-2deg); }
+
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+
+  15% {
+    transform: rotate(10deg);
+  }
+
+  30% {
+    transform: rotate(-10deg);
+  }
+
+  45% {
+    transform: rotate(5deg);
+  }
+
+  60% {
+    transform: rotate(-5deg);
+  }
+
+  75% {
+    transform: rotate(2deg);
+  }
+
+  85% {
+    transform: rotate(-2deg);
+  }
 }
 
 .animate-bell-shake {
   animation: bell-shake 1.2s ease-in-out infinite;
   transform-origin: top center;
 }
-
-

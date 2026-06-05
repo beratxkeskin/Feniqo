@@ -42,7 +42,7 @@ const NavigationRouter: React.FC = () => {
   // Color theme application logic on startup
   useEffect(() => {
     const colorTheme = localStorage.getItem('moneymate_color_theme') || 'emerald';
-    document.documentElement.classList.remove('theme-emerald', 'theme-sunset', 'theme-indigo', 'theme-ocean', 'theme-rose');
+    document.documentElement.classList.remove('theme-emerald', 'theme-sunset', 'theme-indigo', 'theme-ocean', 'theme-rose', 'theme-feniqo');
     document.documentElement.classList.add(`theme-${colorTheme}`);
   }, []);
 
@@ -51,10 +51,10 @@ const NavigationRouter: React.FC = () => {
     if (user) {
       const theme = user.theme;
       const appliedTheme = localStorage.getItem('moneymate_applied_theme');
-      
+
       if (
-        appliedTheme === 'dark' || 
-        theme === 'dark' || 
+        appliedTheme === 'dark' ||
+        theme === 'dark' ||
         (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
       ) {
         document.documentElement.classList.add('dark');

@@ -11,6 +11,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'inline',
       workbox: {
+        maximumFileSizeToCacheInBytes: 5000000,
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
           {

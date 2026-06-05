@@ -27,16 +27,35 @@ import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency, formatMonthName, formatShortDate } from '../utils/formatters';
 import { ChartCard } from '../components/charts/ChartCard';
+import { ForecasterReport } from '../components/reports/ForecasterReport';
+import { DebtSnowballReport } from '../components/reports/DebtSnowballReport';
+import { WealthTrajectoryReport } from '../components/reports/WealthTrajectoryReport';
+import { SpendingHeatmapReport } from '../components/reports/SpendingHeatmapReport';
 
 type PeriodType = 'this-month' | 'last-month' | 'last-3-months' | 'last-6-months' | 'this-year' | 'custom';
 
 export const Reports: React.FC = () => {
-  const { transactions, categories, budgets } = useData();
+  const { 
+    transactions, 
+    categories, 
+    budgets, 
+    recurringTransactions, 
+    goals, 
+    debts, 
+    subscriptions, 
+    assets 
+  } = useData();
   const { user } = useAuth();
   const currency = user?.currency || 'TRY';
   const isEn = user?.lang === 'en';
 
-  const [activeTab, setActiveTab] = useState<'charts' | 'summaries' | 'compare'>('charts');
+  // Premium legend formatter to ensure perfect readability in both light & dark themes
+  const renderLegendText = (value: string) => {
+    return <span className="text-slate-600 dark:text-slate-300 font-extrabold ml-1.5">{value}</span>;
+  };
+
+  const [activeTab, setActiveTab] = useState<'charts' | 'summaries' | 'compare' | 'insights'>('charts');
+  const [activeInsightTab, setActiveInsightTab] = useState<'forecaster' | 'snowball' | 'wealth' | 'heatmap'>('forecaster');
   const [period, setPeriod] = useState<PeriodType>('this-month');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -101,6 +120,35 @@ export const Reports: React.FC = () => {
       setCompareYearA(compareYearB);
       setCompareYearB(temp);
     }
+  };
+
+  // Dynamic JSON Report Data Export Handler
+  const handleExportJSON = () => {
+    const exportData = {
+      reportType: "Feniqo Comparative Financial Report",
+      generatedAt: new Date().toISOString(),
+      periodA: comparePeriodTxs.displayA,
+      periodB: comparePeriodTxs.displayB,
+      comparisonMetrics: compareMetrics,
+      categorySpending: compareCategoryData,
+      paymentMethodComparison: comparePaymentData,
+      cumulativeNetFlow: compareNetFlowData,
+      weeklySpendingSplit: compareWeekendData,
+      budgetOverrunMatrix: compareBudgetMatris,
+      aiCoachRecommendations: compareAIRecommendations
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `feniqo-comparative-report-${comparePeriodTxs.displayA}-vs-${comparePeriodTxs.displayB}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Print Layout Trigger
+  const handlePrintReport = () => {
+    window.print();
   };
 
   // Dynamic period filter calculation
@@ -293,6 +341,12 @@ export const Reports: React.FC = () => {
       chart3Subtitle: isEn ? 'Spending Trends over Period' : 'Dönem İçi Harcama Değişimi',
       chart4Title: isEn ? 'Last 6 Months Balance Change' : 'Son 6 Aylık Bakiye Değişimi',
       chart4Subtitle: isEn ? 'Cumulative Savings Trend' : 'Kümülatif Tasarruf Trendi',
+      chart5Title: isEn ? 'Budget vs Actual Radar' : 'Bütçe vs Harcama Radar Analizi',
+      chart5Subtitle: isEn ? 'Category Limit Compliance' : 'Kategori Limitlerine Uyum Analizi',
+      chart6Title: isEn ? 'Payment Method Breakdown' : 'Ödeme Yöntemi Dağılımı',
+      chart6Subtitle: isEn ? 'Share by Transaction Channel' : 'Ödeme Kanalları Dağılım Payları',
+       chart7Title: isEn ? 'Cumulative Spending & Predictive Forecast' : 'Kümülatif Gider & Prediktif Bakiye Tahmini',
+      chart7Subtitle: isEn ? 'Month-End AI Forecast Overlay' : 'Ay Sonu Harcama Eğrisi Projeksiyonu',
       
       // Monthly Summaries tab translations
       noData: isEn ? 'No transaction data available yet.' : 'Henüz hesaplanacak işlem bulunmuyor.',
@@ -359,7 +413,7 @@ export const Reports: React.FC = () => {
       tablePeriodB: isEn ? 'Period B' : 'B Dönemi',
       tableDiff: isEn ? 'Difference' : 'Net Fark',
       tablePctChange: isEn ? 'Change %' : 'Değişim %',
-      aiReportHeading: isEn ? '🤖 Dynamic Financial Comparison Report' : '🤖 Dinamik Karşılaştırmalı Finans Analizi',
+      aiReportHeading: isEn ? '📈 Dynamic Financial Comparison Report' : '📈 Dinamik Karşılaştırmalı Finans Analizi',
       noComparisonData: isEn ? 'No transaction data found for the selected comparison periods.' : 'Seçilen karşılaştırma periyotları için işlem verisi bulunamadı.',
       compareIntro: isEn 
         ? 'Comparative analysis between {periodA} and {periodB}:' 
@@ -387,7 +441,17 @@ export const Reports: React.FC = () => {
         : 'En yüksek gider artışı **{category}** kategorisinde **+{diff}** olarak gerçekleşti.',
       compareTopDecrease: isEn 
         ? 'You saved the most in **{category}** with a reduction of **-{diff}**.' 
-        : 'En yüksek harcama tasarrufunu **{category}** kategorisinde **-{diff}** azaltarak yaptınız.'
+        : 'En ghost harcama tasarrufunu **{category}** kategorisinde **-{diff}** azaltarak yaptınız.',
+      comparePaymentTitle: isEn ? 'Payment Method Comparison' : 'Ödeme Yöntemi Karşılaştırması',
+      comparePaymentSubtitle: isEn ? 'Side-by-side transaction flow comparison' : 'Ödeme kanalları yan yana harcama kıyaslaması',
+      compareNetFlowTitle: isEn ? 'Cumulative Net Cash Flow' : 'Kümülatif Net Nakit Akışı',
+      compareNetFlowSubtitle: isEn ? 'Day-by-day cumulative Income - Expense progression' : 'Günlük net Gelir - Gider kümülatif birikim kıyaslaması',
+      weekdaySpent: isEn ? 'Weekday Spent' : 'Hafta İçi Harcaması',
+      weekendSpent: isEn ? 'Weekend Spent' : 'Hafta Sonu Harcaması',
+      budgetOverruns: isEn ? 'Budget Overrun Categories' : 'Limit Aşımı Yaşayan Kategoriler',
+      actionableRecs: isEn ? '📊 Strategic Financial Recommendations' : '📊 Stratejik Finansal Öneriler',
+      exportPDF: isEn ? 'Print / Export PDF' : 'Raporu Yazdır / PDF Yap',
+      exportJSON: isEn ? 'Download Data (JSON)' : 'Verileri İndir (JSON)'
     };
   }, [isEn]);
 
@@ -477,6 +541,252 @@ export const Reports: React.FC = () => {
     return insights;
   }, [compareMetrics, compareCategoryData, t, currency]);
 
+  // CHART 6 COMPARISON: SIDE BY SIDE PAYMENT METHOD BREAKDOWN
+  const comparePaymentData = useMemo(() => {
+    const { txsA, txsB } = comparePeriodTxs;
+    
+    const payA: Record<string, number> = {};
+    txsA.filter(t => t.type === 'expense').forEach(t => {
+      const method = t.payment_method || (isEn ? 'Other' : 'Diğer');
+      payA[method] = (payA[method] || 0) + t.amount;
+    });
+
+    const payB: Record<string, number> = {};
+    txsB.filter(t => t.type === 'expense').forEach(t => {
+      const method = t.payment_method || (isEn ? 'Other' : 'Diğer');
+      payB[method] = (payB[method] || 0) + t.amount;
+    });
+
+    const allMethods = Array.from(new Set([...Object.keys(payA), ...Object.keys(payB)]));
+
+    return allMethods.map(method => {
+      let name = method;
+      if (isEn) {
+        if (method === 'Nakit') name = 'Cash';
+        else if (method === 'Kredi Kartı') name = 'Credit Card';
+        else if (method === 'Banka Kartı') name = 'Debit Card';
+        else if (method === 'Havale/EFT') name = 'Bank Transfer';
+        else if (method === 'Diğer') name = 'Other';
+      } else {
+        if (method === 'Cash') name = 'Nakit';
+        else if (method === 'Credit Card') name = 'Kredi Kartı';
+        else if (method === 'Debit Card') name = 'Banka Kartı';
+        else if (method === 'Bank Transfer') name = 'Havale/EFT';
+        else if (method === 'Other') name = 'Diğer';
+      }
+
+      const methodColors: Record<string, string> = {
+        'Nakit': '#10B981', 'Cash': '#10B981',
+        'Kredi Kartı': '#3B82F6', 'Credit Card': '#3B82F6',
+        'Banka Kartı': '#8B5CF6', 'Debit Card': '#8B5CF6',
+        'Havale/EFT': '#F59E0B', 'Bank Transfer': '#F59E0B',
+        'Diğer': '#6B7280', 'Other': '#6B7280'
+      };
+
+      return {
+        name,
+        valA: payA[method] || 0,
+        valB: payB[method] || 0,
+        color: methodColors[method] || methodColors[name] || '#6B7280'
+      };
+    }).sort((a, b) => Math.max(b.valA, b.valB) - Math.max(a.valA, a.valB));
+  }, [comparePeriodTxs, isEn]);
+
+  // CHART 7 COMPARISON: CUMULATIVE NET CASH FLOW (INCOME - EXPENSE PROGRESSION)
+  const compareNetFlowData = useMemo(() => {
+    const { txsA, txsB } = comparePeriodTxs;
+
+    const calculateNetCumulative = (txs: typeof transactions) => {
+      const dailyNet = new Array(32).fill(0);
+      txs.forEach(t => {
+        const day = parseInt(t.transaction_date.substring(8, 10));
+        if (day >= 1 && day <= 31) {
+          if (t.type === 'income') {
+            dailyNet[day] += t.amount;
+          } else {
+            dailyNet[day] -= t.amount;
+          }
+        }
+      });
+
+      const cumulative = [];
+      let total = 0;
+      for (let d = 1; d <= 31; d++) {
+        total += dailyNet[d];
+        cumulative[d] = total;
+      }
+      return cumulative;
+    };
+
+    const cumA = calculateNetCumulative(txsA);
+    const cumB = calculateNetCumulative(txsB);
+
+    const result = [];
+    if (compareMode === 'month') {
+      for (let d = 1; d <= 31; d++) {
+        result.push({
+          name: isEn ? `Day ${d}` : `${d}. Gün`,
+          valA: cumA[d],
+          valB: cumB[d]
+        });
+      }
+    } else {
+      const getMonthlyNet = (txs: typeof transactions) => {
+        const monthly = new Array(13).fill(0);
+        txs.forEach(t => {
+          const month = parseInt(t.transaction_date.substring(5, 7));
+          if (t.type === 'income') {
+            monthly[month] += t.amount;
+          } else {
+            monthly[month] -= t.amount;
+          }
+        });
+        const cumulative = [];
+        let total = 0;
+        for (let m = 1; m <= 12; m++) {
+          total += monthly[m];
+          cumulative[m] = total;
+        }
+        return cumulative;
+      };
+      
+      const yearCumA = getMonthlyNet(txsA);
+      const yearCumB = getMonthlyNet(txsB);
+      
+      const monthNamesTR = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+      const monthNamesEN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      
+      for (let m = 1; m <= 12; m++) {
+        result.push({
+          name: isEn ? monthNamesEN[m - 1] : monthNamesTR[m - 1],
+          valA: yearCumA[m],
+          valB: yearCumB[m]
+        });
+      }
+    }
+
+    return result;
+  }, [comparePeriodTxs, compareMode, isEn]);
+
+  // COMPARATIVE METRIC: WEEKDAY VS WEEKEND SPENDING SPLIT
+  const compareWeekendData = useMemo(() => {
+    const { txsA, txsB } = comparePeriodTxs;
+
+    const calcSplit = (txs: typeof transactions) => {
+      let weekday = 0;
+      let weekend = 0;
+      txs.filter(t => t.type === 'expense').forEach(t => {
+        const day = new Date(t.transaction_date).getDay();
+        if (day === 0 || day === 6) {
+          weekend += t.amount;
+        } else {
+          weekday += t.amount;
+        }
+      });
+      return { weekday, weekend };
+    };
+
+    const splitA = calcSplit(txsA);
+    const splitB = calcSplit(txsB);
+
+    return { splitA, splitB };
+  }, [comparePeriodTxs]);
+
+  // COMPARATIVE METRIC: BUDGET OVERRUN MATRIS
+  const compareBudgetMatris = useMemo(() => {
+    const { txsA, txsB } = comparePeriodTxs;
+    
+    const getMonthsInTxs = (txs: typeof transactions) => {
+      const months = new Set<string>();
+      txs.forEach(t => months.add(t.transaction_date.substring(0, 7)));
+      return Array.from(months);
+    };
+    
+    const monthsA = getMonthsInTxs(txsA);
+    const monthsB = getMonthsInTxs(txsB);
+    
+    const calcExceeds = (txs: typeof transactions, months: string[]) => {
+      const exceedsList: Array<{ catId: string, name: string, spent: number, limit: number, overrun: number }> = [];
+      
+      categories.forEach(cat => {
+        const spent = txs
+          .filter(t => t.type === 'expense' && t.category_id === cat.id)
+          .reduce((sum, t) => sum + t.amount, 0);
+          
+        const limit = budgets
+          .filter(b => b.category_id === cat.id && months.includes(b.month))
+          .reduce((sum, b) => sum + b.limit_amount, 0);
+          
+        if (limit > 0 && spent > limit) {
+          exceedsList.push({
+            catId: cat.id,
+            name: cat.name,
+            spent,
+            limit,
+            overrun: spent - limit
+          });
+        }
+      });
+      
+      return exceedsList;
+    };
+
+    const listA = calcExceeds(txsA, monthsA);
+    const listB = calcExceeds(txsB, monthsB);
+    
+    return { listA, listB };
+  }, [comparePeriodTxs, categories, budgets]);
+
+  // COMPARATIVE METRIC: AI COACH RECOMMENDATIONS
+  const compareAIRecommendations = useMemo(() => {
+    const { listA, listB } = compareBudgetMatris;
+    const { expenseDiff } = compareMetrics;
+    const recs: string[] = [];
+
+    if (expenseDiff > 0) {
+      recs.push(
+        isEn
+          ? "🎯 **Actionable Limit Correction:** Your expenses increased in Period B. We recommend setting a strict category limit ceiling for your top overrun categories next month."
+          : "🎯 **Bütçe Sınırı Optimizasyonu:** Harcamalarınız B döneminde artış gösterdi. Gelecek ay en çok harcama artışı gösteren kategoriler için acilen üst sınır bütçe limitleri tanımlamalısınız."
+      );
+    }
+
+    if (listB.length > listA.length) {
+      const overruns = listB.map(l => l.name).join(', ');
+      recs.push(
+        isEn
+          ? `⚠️ **Budget Adherence Advice:** You exceeded more budget limits in Period B (${listB.length} categories: ${overruns}). Consider activating mobile alert notifications when you approach 80% of these limits.`
+          : `⚠️ **Bütçe Disiplini Önerisi:** B döneminde bütçe limitlerinizi aşan kategori sayısı arttı (${listB.length} kategori: ${overruns}). Bu kategorilerde harcama seviyeniz %80'e ulaştığında anlık uyarı alacak şekilde bütçe bildirimlerini aktif etmelisiniz.`
+      );
+    } else if (listB.length > 0) {
+      recs.push(
+        isEn
+          ? "🎉 **Budget Maintenance Advice:** You maintained a healthy overrun profile. For categories still exceeding limit boundaries, try trimming small subscription bills to balance outflows."
+          : "🎉 **Bütçe Koruma Önerisi:** Bütçe aşım sayısını dengede tutmayı başardınız. Yine de limit sınırını aşan az sayıdaki kategori için ufak tefek gereksiz sabit abonelikleri kısarak bütçe dengesi sağlayabilirsiniz."
+      );
+    }
+
+    const { splitA, splitB } = compareWeekendData;
+    const isWeekendBHigher = splitB.weekend > splitA.weekend;
+    if (isWeekendBHigher && splitB.weekend > 0) {
+      recs.push(
+        isEn
+          ? "🏖️ **Weekend Savings Strategy:** Period B shows weekend spent expansion. Implementing a weekend 'social spent ceiling' of 500 TL can prevent rapid discretionary cash drainage."
+          : "🏖️ **Hafta Sonu Tasarruf Stratejisi:** B döneminde hafta sonu harcamalarınızda belirgin bir artış görüldü. Cumartesi ve Pazar günleri için 500 TL'lik bir 'sosyal harcama üst limiti' belirlemek, keyfi bütçe erimelerini önleyecektir."
+      );
+    }
+
+    if (recs.length === 0) {
+      recs.push(
+        isEn
+          ? "✨ **General Wealth Advice:** Both periods look extremely stable. We advise routing your net savings directly into compound goals or high-yield investments to accelerate your financial freedom trajectory."
+          : "✨ **Genel Birikim Tavsiyesi:** Her iki dönem de oldukça kararlı görünüyor. Finansal özgürlük ivmenizi hızlandırmak için elde ettiğiniz net birikimleri doğrudan vadeli hedeflerinize veya yatırımlara yönlendirmenizi tavsiye ederiz."
+      );
+    }
+
+    return recs;
+  }, [compareBudgetMatris, compareMetrics, compareWeekendData, isEn]);
+
   // ---------------------------------------------------------------
   // CALCULATE DATE BOUNDARIES FOR FILTERS
   // ---------------------------------------------------------------
@@ -538,7 +848,8 @@ export const Reports: React.FC = () => {
       return {
         name: formatMonthName(mStr, isEn).split(' ')[0], // only month name
         gelir: inc,
-        gider: exp
+        gider: exp,
+        tasarruf: inc - exp
       };
     });
   }, [periodTxs, isEn]);
@@ -612,6 +923,165 @@ export const Reports: React.FC = () => {
       };
     });
   }, [transactions, isEn]);
+
+  // Extract unique months in period to aggregate limits accurately
+  const periodMonths = useMemo(() => {
+    const { start, end } = dateBoundaries;
+    if (!start || !end) return [];
+    const months: string[] = [];
+    const current = new Date(start);
+    const stop = new Date(end);
+    while (current <= stop) {
+      const mStr = current.toISOString().substring(0, 7);
+      if (!months.includes(mStr)) {
+        months.push(mStr);
+      }
+      current.setMonth(current.getMonth() + 1);
+    }
+    return months;
+  }, [dateBoundaries]);
+
+  // CHART 5: BUDGET VS ACTUAL EXPENDITURE RADAR
+  const radarBudgetData = useMemo(() => {
+    const expenseCategories = categories.filter(c => c.type === 'expense');
+    
+    const results = expenseCategories.map(cat => {
+      const spent = periodTxs
+        .filter(t => t.type === 'expense' && t.category_id === cat.id)
+        .reduce((sum, t) => sum + t.amount, 0);
+        
+      const limit = budgets
+        .filter(b => b.category_id === cat.id && periodMonths.includes(b.month))
+        .reduce((sum, b) => sum + b.limit_amount, 0);
+        
+      return {
+        name: cat.name,
+        spent,
+        limit
+      };
+    });
+    
+    return results
+      .filter(r => r.spent > 0 || r.limit > 0)
+      .sort((a, b) => Math.max(b.spent, b.limit) - Math.max(a.spent, a.limit))
+      .slice(0, 6);
+  }, [categories, budgets, periodTxs, periodMonths]);
+
+  // CHART 6: PAYMENT METHOD BREAKDOWN
+  const paymentMethodData = useMemo(() => {
+    const methodTotals: Record<string, number> = {};
+    const expenseTxs = periodTxs.filter(t => t.type === 'expense');
+    
+    expenseTxs.forEach(t => {
+      const method = t.payment_method || (isEn ? 'Other' : 'Diğer');
+      methodTotals[method] = (methodTotals[method] || 0) + t.amount;
+    });
+
+    const methodColors: Record<string, string> = {
+      'Nakit': '#10B981',
+      'Cash': '#10B981',
+      'Kredi Kartı': '#3B82F6',
+      'Credit Card': '#3B82F6',
+      'Banka Kartı': '#8B5CF6',
+      'Debit Card': '#8B5CF6',
+      'Havale/EFT': '#F59E0B',
+      'Bank Transfer': '#F59E0B',
+      'Diğer': '#6B7280',
+      'Other': '#6B7280'
+    };
+
+    return Object.entries(methodTotals).map(([method, total]) => {
+      let name = method;
+      if (isEn) {
+        if (method === 'Nakit') name = 'Cash';
+        else if (method === 'Kredi Kartı') name = 'Credit Card';
+        else if (method === 'Banka Kartı') name = 'Debit Card';
+        else if (method === 'Havale/EFT') name = 'Bank Transfer';
+        else if (method === 'Diğer') name = 'Other';
+      } else {
+        if (method === 'Cash') name = 'Nakit';
+        else if (method === 'Credit Card') name = 'Kredi Kartı';
+        else if (method === 'Debit Card') name = 'Banka Kartı';
+        else if (method === 'Bank Transfer') name = 'Havale/EFT';
+        else if (method === 'Other') name = 'Diğer';
+      }
+
+      return {
+        name,
+        value: total,
+        color: methodColors[method] || methodColors[name] || '#6B7280'
+      };
+    }).sort((a, b) => b.value - a.value);
+  }, [periodTxs, isEn]);
+
+  // CHART 7: CUMULATIVE SPENDING & AI FORECAST SPLINE
+  const cumulativeForecastData = useMemo(() => {
+    const { start, end } = dateBoundaries;
+    if (!start || !end) return [];
+
+    const startDateObj = new Date(start);
+    const endDateObj = new Date(end);
+    
+    const diffTime = Math.abs(endDateObj.getTime() - startDateObj.getTime());
+    const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    const maxDays = Math.min(31, totalDays);
+
+    const dailyExpenses = new Array(maxDays + 1).fill(0);
+    const expenseTxs = periodTxs.filter(t => t.type === 'expense');
+
+    expenseTxs.forEach(t => {
+      const tDateObj = new Date(t.transaction_date);
+      const dayDiff = Math.floor((tDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      if (dayDiff >= 1 && dayDiff <= maxDays) {
+        dailyExpenses[dayDiff] += t.amount;
+      }
+    });
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    let currentDayIndex = maxDays;
+
+    if (start <= todayStr && end >= todayStr) {
+      const todayObj = new Date(todayStr);
+      currentDayIndex = Math.floor((todayObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      currentDayIndex = Math.min(maxDays, Math.max(1, currentDayIndex));
+    } else if (end < todayStr) {
+      currentDayIndex = maxDays;
+    } else {
+      currentDayIndex = 1;
+    }
+
+    const cumulativeSpent: number[] = new Array(maxDays + 1).fill(0);
+    let total = 0;
+    for (let d = 1; d <= maxDays; d++) {
+      total += dailyExpenses[d];
+      cumulativeSpent[d] = total;
+    }
+
+    const spentSoFar = cumulativeSpent[currentDayIndex];
+    const dailyVelocity = currentDayIndex > 0 ? (spentSoFar / currentDayIndex) : 0;
+
+    const result = [];
+    for (let d = 1; d <= maxDays; d++) {
+      let spentVal: number | undefined = undefined;
+      let forecastVal: number = 0;
+
+      if (d <= currentDayIndex) {
+        spentVal = cumulativeSpent[d];
+        forecastVal = spentVal;
+      } else {
+        spentVal = undefined;
+        forecastVal = cumulativeSpent[currentDayIndex] + (d - currentDayIndex) * dailyVelocity;
+      }
+
+      result.push({
+        name: isEn ? `D${d}` : `${d}. Gün`,
+        spent: spentVal,
+        forecast: Math.round(forecastVal)
+      });
+    }
+
+    return result;
+  }, [periodTxs, dateBoundaries, isEn]);
 
   // Summary Metrics for the Filtered Period
   const periodSummary = useMemo(() => {
@@ -907,6 +1377,19 @@ export const Reports: React.FC = () => {
     });
   }, [selectedMonthStr, transactions, categories, budgets, isEn]);
 
+  const avgMonthlyIncome = useMemo(() => {
+    const incomeTxs = transactions.filter(t => t.type === 'income');
+    if (incomeTxs.length === 0) return 0;
+    const amountsByMonth: Record<string, number> = {};
+    incomeTxs.forEach(t => {
+      const mStr = t.transaction_date.substring(0, 7);
+      amountsByMonth[mStr] = (amountsByMonth[mStr] || 0) + t.amount;
+    });
+    const months = Object.keys(amountsByMonth);
+    const totalIncome = Object.values(amountsByMonth).reduce((sum, a) => sum + a, 0);
+    return totalIncome / Math.max(1, months.length);
+  }, [transactions]);
+
   return (
     <div className="space-y-6">
       
@@ -923,10 +1406,10 @@ export const Reports: React.FC = () => {
         </div>
 
         {/* Dynamic Tab Selector */}
-        <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200/50 dark:border-slate-700/40 self-start">
+        <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200/50 dark:border-slate-700/40 self-start max-w-full overflow-x-auto scrollbar-none gap-1">
           <button
             onClick={() => setActiveTab('charts')}
-            className={`flex items-center space-x-2 py-2 px-4 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center space-x-2 py-2 px-4 rounded-xl text-xs font-bold transition-all shrink-0 whitespace-nowrap ${
               activeTab === 'charts' 
                 ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm border border-slate-200/40 dark:border-slate-800/40' 
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
@@ -937,7 +1420,7 @@ export const Reports: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('summaries')}
-            className={`flex items-center space-x-2 py-2 px-4 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center space-x-2 py-2 px-4 rounded-xl text-xs font-bold transition-all shrink-0 whitespace-nowrap ${
               activeTab === 'summaries' 
                 ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm border border-slate-200/40 dark:border-slate-800/40' 
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
@@ -948,7 +1431,7 @@ export const Reports: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('compare')}
-            className={`flex items-center space-x-2 py-2 px-4 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center space-x-2 py-2 px-4 rounded-xl text-xs font-bold transition-all shrink-0 whitespace-nowrap ${
               activeTab === 'compare' 
                 ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm border border-slate-200/40 dark:border-slate-800/40' 
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
@@ -956,6 +1439,17 @@ export const Reports: React.FC = () => {
           >
             <BarChart3 size={14} />
             <span>{t.tabCompare}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('insights')}
+            className={`flex items-center space-x-2 py-2 px-4 rounded-xl text-xs font-bold transition-all shrink-0 whitespace-nowrap ${
+              activeTab === 'insights' 
+                ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm border border-slate-200/40 dark:border-slate-800/40' 
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
+            }`}
+          >
+            <Sparkles size={14} className="text-brand-600 dark:text-brand-400" />
+            <span>{isEn ? 'Premium Insights 💎' : 'Premium Analizler 💎'}</span>
           </button>
         </div>
       </div>
@@ -1084,18 +1578,32 @@ export const Reports: React.FC = () => {
           </div>
 
           {/* CHARTS CONTAINER GRID */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ChartCard
-              title={t.chart1Title}
-              subtitle={t.chart1Subtitle}
-              type="bar-compare"
-              data={monthlyCompareData}
-            />
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <ChartCard
+                title={t.chart1Title}
+                subtitle={t.chart1Subtitle}
+                type="composed-savings"
+                data={monthlyCompareData}
+              />
+            </div>
             <ChartCard
               title={t.chart2Title}
               subtitle={t.chart2Subtitle}
               type="pie-category"
               data={categoryDonutData}
+            />
+            <ChartCard
+              title={t.chart5Title}
+              subtitle={t.chart5Subtitle}
+              type="radar-budget"
+              data={radarBudgetData}
+            />
+            <ChartCard
+              title={t.chart6Title}
+              subtitle={t.chart6Subtitle}
+              type="pie-payment"
+              data={paymentMethodData}
             />
             <ChartCard
               title={t.chart3Title}
@@ -1109,6 +1617,14 @@ export const Reports: React.FC = () => {
               type="line-balance"
               data={balanceTrendData}
             />
+            <div className="lg:col-span-2 xl:col-span-3">
+              <ChartCard
+                title={t.chart7Title}
+                subtitle={t.chart7Subtitle}
+                type="area-forecast"
+                data={cumulativeForecastData}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -1521,102 +2037,121 @@ export const Reports: React.FC = () => {
           
           {/* Controls Cockpit */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/60 dark:border-slate-800/80 p-5 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-              {/* Mode switch */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider pl-1 whitespace-nowrap">
-                  {t.compareModeLabel}
-                </label>
-                <div className="flex p-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200/50 dark:border-slate-700/40 w-fit">
+            <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-end flex-1 gap-4">
+                {/* Mode switch */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider pl-1 whitespace-nowrap">
+                    {t.compareModeLabel}
+                  </label>
+                  <div className="flex p-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200/50 dark:border-slate-700/40 w-fit">
+                    <button
+                      onClick={() => setCompareMode('month')}
+                      className={`py-1.5 px-3 rounded-lg text-xs font-semibold transition-all ${
+                        compareMode === 'month' 
+                          ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm' 
+                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                      }`}
+                    >
+                      {t.compareMonthMode}
+                    </button>
+                    <button
+                      onClick={() => setCompareMode('year')}
+                      className={`py-1.5 px-3 rounded-lg text-xs font-semibold transition-all ${
+                        compareMode === 'year' 
+                          ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm' 
+                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                      }`}
+                    >
+                      {t.compareYearMode}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Swap indicator & Selects */}
+                <div className="flex-1 flex items-end justify-center sm:justify-start gap-4">
+                  {/* Period A Select */}
+                  <div className="space-y-1.5 flex-1 max-w-[260px]">
+                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider pl-1 whitespace-nowrap">
+                      {t.periodALabel}
+                    </label>
+                    {compareMode === 'month' ? (
+                      <select
+                        value={compareMonthA}
+                        onChange={(e) => setCompareMonthA(e.target.value)}
+                        className="premium-input text-xs py-2 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 cursor-pointer"
+                      >
+                        {uniqueMonths.map(m => (
+                          <option key={m} value={m}>{formatMonthName(m, isEn)}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <select
+                        value={compareYearA}
+                        onChange={(e) => setCompareYearA(e.target.value)}
+                        className="premium-input text-xs py-2 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 cursor-pointer"
+                      >
+                        {uniqueYears.map(y => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  {/* Swap Button */}
                   <button
-                    onClick={() => setCompareMode('month')}
-                    className={`py-1.5 px-3 rounded-lg text-xs font-semibold transition-all ${
-                      compareMode === 'month' 
-                        ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm' 
-                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-                    }`}
+                    onClick={handleSwapPeriods}
+                    title={t.swapLabel}
+                    className="p-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-500 dark:text-slate-400 rounded-xl border border-slate-200 dark:border-slate-700/80 transition-all hover:scale-105 active:scale-95 cursor-pointer shrink-0 h-[34px] w-[34px] flex items-center justify-center"
                   >
-                    {t.compareMonthMode}
+                    <ArrowUpDown size={16} className="transform rotate-90 text-brand-600 dark:text-brand-400" />
                   </button>
-                  <button
-                    onClick={() => setCompareMode('year')}
-                    className={`py-1.5 px-3 rounded-lg text-xs font-semibold transition-all ${
-                      compareMode === 'year' 
-                        ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm' 
-                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-                    }`}
-                  >
-                    {t.compareYearMode}
-                  </button>
+
+                  {/* Period B Select */}
+                  <div className="space-y-1.5 flex-1 max-w-[260px]">
+                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider pl-1 whitespace-nowrap">
+                      {t.periodBLabel}
+                    </label>
+                    {compareMode === 'month' ? (
+                      <select
+                        value={compareMonthB}
+                        onChange={(e) => setCompareMonthB(e.target.value)}
+                        className="premium-input text-xs py-2 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 cursor-pointer"
+                      >
+                        {uniqueMonths.map(m => (
+                          <option key={m} value={m}>{formatMonthName(m, isEn)}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <select
+                        value={compareYearB}
+                        onChange={(e) => setCompareYearB(e.target.value)}
+                        className="premium-input text-xs py-2 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 cursor-pointer"
+                      >
+                        {uniqueYears.map(y => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Swap indicator */}
-              <div className="flex-1 flex items-end justify-center sm:justify-start gap-4">
-                {/* Period A Select */}
-                <div className="space-y-1.5 flex-1 max-w-[260px]">
-                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider pl-1 whitespace-nowrap">
-                    {t.periodALabel}
-                  </label>
-                  {compareMode === 'month' ? (
-                    <select
-                      value={compareMonthA}
-                      onChange={(e) => setCompareMonthA(e.target.value)}
-                      className="premium-input text-xs py-2 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 cursor-pointer"
-                    >
-                      {uniqueMonths.map(m => (
-                        <option key={m} value={m}>{formatMonthName(m, isEn)}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <select
-                      value={compareYearA}
-                      onChange={(e) => setCompareYearA(e.target.value)}
-                      className="premium-input text-xs py-2 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 cursor-pointer"
-                    >
-                      {uniqueYears.map(y => (
-                        <option key={y} value={y}>{y}</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                {/* Swap Button */}
+              {/* Dynamic Action Buttons cockpit */}
+              <div className="flex items-center gap-2 self-start xl:self-end">
                 <button
-                  onClick={handleSwapPeriods}
-                  title={t.swapLabel}
-                  className="p-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-500 dark:text-slate-400 rounded-xl border border-slate-200 dark:border-slate-700/80 transition-all hover:scale-105 active:scale-95 cursor-pointer shrink-0 h-[34px] w-[34px] flex items-center justify-center"
+                  onClick={handlePrintReport}
+                  className="py-2 px-3 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-xs transition-all hover:scale-105 active:scale-95 flex items-center gap-1.5 shadow-sm cursor-pointer"
                 >
-                  <ArrowUpDown size={16} className="transform rotate-90 text-brand-600 dark:text-brand-400" />
+                  <Sparkles size={14} className="text-brand-500 animate-pulse" />
+                  <span>{t.exportPDF}</span>
                 </button>
-
-                {/* Period B Select */}
-                <div className="space-y-1.5 flex-1 max-w-[260px]">
-                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider pl-1 whitespace-nowrap">
-                    {t.periodBLabel}
-                  </label>
-                  {compareMode === 'month' ? (
-                    <select
-                      value={compareMonthB}
-                      onChange={(e) => setCompareMonthB(e.target.value)}
-                      className="premium-input text-xs py-2 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 cursor-pointer"
-                    >
-                      {uniqueMonths.map(m => (
-                        <option key={m} value={m}>{formatMonthName(m, isEn)}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <select
-                      value={compareYearB}
-                      onChange={(e) => setCompareYearB(e.target.value)}
-                      className="premium-input text-xs py-2 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 cursor-pointer"
-                    >
-                      {uniqueYears.map(y => (
-                        <option key={y} value={y}>{y}</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
+                <button
+                  onClick={handleExportJSON}
+                  className="py-2 px-3 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-bold text-xs transition-all hover:scale-105 active:scale-95 flex items-center gap-1.5 shadow-md shadow-brand-500/10 cursor-pointer"
+                >
+                  <span>{t.exportJSON}</span>
+                </button>
               </div>
             </div>
           </div>
@@ -1630,103 +2165,234 @@ export const Reports: React.FC = () => {
           ) : (
             <>
               {/* Comparison Metrics Grid */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4.5">
                 {/* Total Income Comparison */}
-                <div className="p-4 bg-emerald-500/5 border border-emerald-100 dark:border-emerald-950/20 rounded-2xl space-y-1 relative">
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                    {t.incomeDiff}
-                  </span>
-                  <div className="space-y-0.5">
-                    <div className="flex justify-between items-baseline gap-1">
-                      <span className="text-[9px] text-slate-400 font-medium">A: {formatCurrency(compareMetrics.statsA.income, currency)}</span>
-                      <span className="text-[9px] text-slate-900 dark:text-slate-200 font-extrabold">B: {formatCurrency(compareMetrics.statsB.income, currency)}</span>
+                <div className="p-4.5 bg-emerald-500/5 border border-emerald-100/70 dark:border-emerald-950/30 rounded-2xl flex flex-col justify-between space-y-3.5 relative shadow-sm hover:shadow-md transition-all duration-200">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                      {t.incomeDiff}
+                    </span>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg shrink-0 ${
+                      compareMetrics.incomeDiff >= 0 
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
+                        : 'bg-red-500/10 text-red-600'
+                    }`}>
+                      {compareMetrics.incomeChangePct >= 0 ? '+' : ''}{compareMetrics.incomeChangePct}%
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-800/40">
+                    <div className="flex flex-col">
+                      <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">{isEn ? 'Period A' : 'A Dönemi'}</span>
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-400 truncate">{formatCurrency(compareMetrics.statsA.income, currency)}</span>
                     </div>
-                    <div className="flex items-center justify-between pt-1">
-                      <strong className={`text-sm font-black ${compareMetrics.incomeDiff >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                        {compareMetrics.incomeDiff >= 0 ? '+' : ''}{formatCurrency(compareMetrics.incomeDiff, currency)}
-                      </strong>
-                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
-                        compareMetrics.incomeDiff >= 0 
-                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
-                          : 'bg-red-500/10 text-red-600'
-                      }`}>
-                        {compareMetrics.incomeChangePct >= 0 ? '+' : ''}{compareMetrics.incomeChangePct}%
-                      </span>
+                    <div className="flex flex-col border-l border-slate-100 dark:border-slate-800/40 pl-2">
+                      <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">{isEn ? 'Period B' : 'B Dönemi'}</span>
+                      <span className="text-xs font-black text-slate-800 dark:text-slate-200 truncate">{formatCurrency(compareMetrics.statsB.income, currency)}</span>
                     </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">{isEn ? 'Net Shift' : 'Net Değişim'}</span>
+                    <strong className={`text-base font-black tracking-tight ${compareMetrics.incomeDiff >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {compareMetrics.incomeDiff >= 0 ? '+' : ''}{formatCurrency(compareMetrics.incomeDiff, currency)}
+                    </strong>
                   </div>
                 </div>
 
                 {/* Total Expense Comparison */}
-                <div className="p-4 bg-red-500/5 border border-red-100 dark:border-red-950/20 rounded-2xl space-y-1 relative">
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                    {t.expenseDiff}
-                  </span>
-                  <div className="space-y-0.5">
-                    <div className="flex justify-between items-baseline gap-1">
-                      <span className="text-[9px] text-slate-400 font-medium">A: {formatCurrency(compareMetrics.statsA.expense, currency)}</span>
-                      <span className="text-[9px] text-slate-900 dark:text-slate-200 font-extrabold">B: {formatCurrency(compareMetrics.statsB.expense, currency)}</span>
+                <div className="p-4.5 bg-red-500/5 border border-red-100/70 dark:border-red-950/30 rounded-2xl flex flex-col justify-between space-y-3.5 relative shadow-sm hover:shadow-md transition-all duration-200">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                      {t.expenseDiff}
+                    </span>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg shrink-0 ${
+                      compareMetrics.expenseDiff <= 0 
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
+                        : 'bg-red-500/10 text-red-600'
+                    }`}>
+                      {compareMetrics.expenseChangePct >= 0 ? '+' : ''}{compareMetrics.expenseChangePct}%
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-800/40">
+                    <div className="flex flex-col">
+                      <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">{isEn ? 'Period A' : 'A Dönemi'}</span>
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-400 truncate">{formatCurrency(compareMetrics.statsA.expense, currency)}</span>
                     </div>
-                    <div className="flex items-center justify-between pt-1">
-                      <strong className={`text-sm font-black ${compareMetrics.expenseDiff <= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                        {compareMetrics.expenseDiff >= 0 ? '+' : ''}{formatCurrency(compareMetrics.expenseDiff, currency)}
-                      </strong>
-                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
-                        compareMetrics.expenseDiff <= 0 
-                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
-                          : 'bg-red-500/10 text-red-600'
-                      }`}>
-                        {compareMetrics.expenseChangePct >= 0 ? '+' : ''}{compareMetrics.expenseChangePct}%
-                      </span>
+                    <div className="flex flex-col border-l border-slate-100 dark:border-slate-800/40 pl-2">
+                      <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">{isEn ? 'Period B' : 'B Dönemi'}</span>
+                      <span className="text-xs font-black text-slate-800 dark:text-slate-200 truncate">{formatCurrency(compareMetrics.statsB.expense, currency)}</span>
                     </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">{isEn ? 'Net Shift' : 'Net Değişim'}</span>
+                    <strong className={`text-base font-black tracking-tight ${compareMetrics.expenseDiff <= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {compareMetrics.expenseDiff >= 0 ? '+' : ''}{formatCurrency(compareMetrics.expenseDiff, currency)}
+                    </strong>
                   </div>
                 </div>
 
                 {/* Net Savings Comparison */}
-                <div className="p-4 bg-blue-500/5 border border-blue-100 dark:border-blue-950/20 rounded-2xl space-y-1 relative">
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                    {t.netDiff}
-                  </span>
-                  <div className="space-y-0.5">
-                    <div className="flex justify-between items-baseline gap-1">
-                      <span className="text-[9px] text-slate-400 font-medium">A: {formatCurrency(compareMetrics.statsA.net, currency)}</span>
-                      <span className="text-[9px] text-slate-900 dark:text-slate-200 font-extrabold">B: {formatCurrency(compareMetrics.statsB.net, currency)}</span>
+                <div className="p-4.5 bg-blue-500/5 border border-blue-100/70 dark:border-blue-950/30 rounded-2xl flex flex-col justify-between space-y-3.5 relative shadow-sm hover:shadow-md transition-all duration-200">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                      {t.netDiff}
+                    </span>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg shrink-0 ${
+                      compareMetrics.netDiff >= 0 
+                        ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' 
+                        : 'bg-red-500/10 text-red-600'
+                    }`}>
+                      {compareMetrics.netChangePct >= 0 ? '+' : ''}{compareMetrics.netChangePct}%
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-800/40">
+                    <div className="flex flex-col">
+                      <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">{isEn ? 'Period A' : 'A Dönemi'}</span>
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-400 truncate">{formatCurrency(compareMetrics.statsA.net, currency)}</span>
                     </div>
-                    <div className="flex items-center justify-between pt-1">
-                      <strong className={`text-sm font-black ${compareMetrics.netDiff >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
-                        {compareMetrics.netDiff >= 0 ? '+' : ''}{formatCurrency(compareMetrics.netDiff, currency)}
-                      </strong>
-                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
-                        compareMetrics.netDiff >= 0 
-                          ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' 
-                          : 'bg-red-500/10 text-red-600'
-                      }`}>
-                        {compareMetrics.netChangePct >= 0 ? '+' : ''}{compareMetrics.netChangePct}%
+                    <div className="flex flex-col border-l border-slate-100 dark:border-slate-800/40 pl-2">
+                      <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">{isEn ? 'Period B' : 'B Dönemi'}</span>
+                      <span className="text-xs font-black text-slate-800 dark:text-slate-200 truncate">{formatCurrency(compareMetrics.statsB.net, currency)}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">{isEn ? 'Net Shift' : 'Net Değişim'}</span>
+                    <strong className={`text-base font-black tracking-tight ${compareMetrics.netDiff >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {compareMetrics.netDiff >= 0 ? '+' : ''}{formatCurrency(compareMetrics.netDiff, currency)}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Savings Rate Comparison */}
+                <div className="p-4.5 bg-purple-500/5 border border-purple-100/70 dark:border-purple-950/30 rounded-2xl flex flex-col justify-between space-y-3.5 relative shadow-sm hover:shadow-md transition-all duration-200">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                      {t.savingsRateDiff}
+                    </span>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg shrink-0 ${
+                      compareMetrics.rateDiff >= 0 
+                        ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400' 
+                        : 'bg-red-500/10 text-red-600'
+                    }`}>
+                      {compareMetrics.rateDiff >= 0 ? '+' : ''}{compareMetrics.rateDiff}%
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-800/40">
+                    <div className="flex flex-col">
+                      <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">{isEn ? 'Period A' : 'A Dönemi'}</span>
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-400 truncate">%{compareMetrics.statsA.savingsRate}</span>
+                    </div>
+                    <div className="flex flex-col border-l border-slate-100 dark:border-slate-800/40 pl-2">
+                      <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">{isEn ? 'Period B' : 'B Dönemi'}</span>
+                      <span className="text-xs font-black text-slate-800 dark:text-slate-200 truncate">%{compareMetrics.statsB.savingsRate}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">{isEn ? 'Net Shift' : 'Net Değişim'}</span>
+                    <strong className={`text-base font-black tracking-tight ${compareMetrics.rateDiff >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {compareMetrics.rateDiff >= 0 ? '+' : ''}{compareMetrics.rateDiff}%
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Comparative Split Indicators */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* 1. Hafta İçi vs. Hafta Sonu Split Card */}
+                <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/60 dark:border-slate-800/80 p-5 shadow-sm space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Sparkles size={16} className="text-brand-500" />
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                      {isEn ? 'Weekday vs. Weekend Habits Shift' : 'Hafta İçi / Hafta Sonu Harcama Değişimi'}
+                    </h4>
+                  </div>
+                  <div className="space-y-4">
+                    {/* Period A */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[11px] font-bold text-slate-500">
+                        <span>A: {comparePeriodTxs.displayA}</span>
+                        <span>
+                          {t.weekdaySpent}: {formatCurrency(compareWeekendData.splitA.weekday, currency)} | {t.weekendSpent}: {formatCurrency(compareWeekendData.splitA.weekend, currency)}
+                        </span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full flex overflow-hidden">
+                        <div 
+                          className="h-full bg-brand-500 transition-all" 
+                          style={{ width: `${compareWeekendData.splitA.weekday + compareWeekendData.splitA.weekend > 0 ? (compareWeekendData.splitA.weekday / (compareWeekendData.splitA.weekday + compareWeekendData.splitA.weekend)) * 100 : 50}%` }} 
+                        />
+                        <div 
+                          className="h-full bg-amber-500 transition-all" 
+                          style={{ width: `${compareWeekendData.splitA.weekday + compareWeekendData.splitA.weekend > 0 ? (compareWeekendData.splitA.weekend / (compareWeekendData.splitA.weekday + compareWeekendData.splitA.weekend)) * 100 : 50}%` }} 
+                        />
+                      </div>
+                    </div>
+                    {/* Period B */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[11px] font-bold text-slate-500">
+                        <span>B: {comparePeriodTxs.displayB}</span>
+                        <span>
+                          {t.weekdaySpent}: {formatCurrency(compareWeekendData.splitB.weekday, currency)} | {t.weekendSpent}: {formatCurrency(compareWeekendData.splitB.weekend, currency)}
+                        </span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full flex overflow-hidden">
+                        <div 
+                          className="h-full bg-brand-500 transition-all" 
+                          style={{ width: `${compareWeekendData.splitB.weekday + compareWeekendData.splitB.weekend > 0 ? (compareWeekendData.splitB.weekday / (compareWeekendData.splitB.weekday + compareWeekendData.splitB.weekend)) * 100 : 50}%` }} 
+                        />
+                        <div 
+                          className="h-full bg-amber-500 transition-all" 
+                          style={{ width: `${compareWeekendData.splitB.weekday + compareWeekendData.splitB.weekend > 0 ? (compareWeekendData.splitB.weekend / (compareWeekendData.splitB.weekday + compareWeekendData.splitB.weekend)) * 100 : 50}%` }} 
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-center space-x-6 text-[10px] font-bold pt-1.5 border-t border-slate-100 dark:border-slate-800/60">
+                      <span className="flex items-center space-x-1.5">
+                        <span className="w-2.5 h-2.5 bg-brand-500 rounded-full inline-block" />
+                        <span className="text-slate-500">{t.weekdaySpent}</span>
+                      </span>
+                      <span className="flex items-center space-x-1.5">
+                        <span className="w-2.5 h-2.5 bg-amber-500 rounded-full inline-block" />
+                        <span className="text-slate-500">{t.weekendSpent}</span>
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Savings Rate Comparison */}
-                <div className="p-4 bg-purple-500/5 border border-purple-100 dark:border-purple-950/20 rounded-2xl space-y-1 relative">
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                    {t.savingsRateDiff}
-                  </span>
-                  <div className="space-y-0.5">
-                    <div className="flex justify-between items-baseline gap-1">
-                      <span className="text-[9px] text-slate-400 font-medium">A: %{compareMetrics.statsA.savingsRate}</span>
-                      <span className="text-[9px] text-slate-900 dark:text-slate-200 font-extrabold">B: %{compareMetrics.statsB.savingsRate}</span>
-                    </div>
-                    <div className="flex items-center justify-between pt-1">
-                      <strong className={`text-sm font-black ${compareMetrics.rateDiff >= 0 ? 'text-purple-600 dark:text-purple-400' : 'text-red-600 dark:text-red-400'}`}>
-                        {compareMetrics.rateDiff >= 0 ? '+' : ''}{compareMetrics.rateDiff}%
+                {/* 2. Karşılaştırmalı Bütçe Aşım Limit Matrisi */}
+                <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/60 dark:border-slate-800/80 p-5 shadow-sm space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Sparkles size={16} className="text-red-500" />
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                      {isEn ? 'Budget Limit Compliance Matrix' : 'Karşılaştırmalı Limit Aşım Matrisi'}
+                    </h4>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Period A */}
+                    <div className="p-3.5 bg-slate-50/50 dark:bg-slate-800/25 border border-slate-100 dark:border-slate-800 rounded-2xl space-y-1.5">
+                      <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">A: {comparePeriodTxs.displayA}</span>
+                      <strong className="text-lg font-black text-slate-800 dark:text-slate-100 block">
+                        {compareBudgetMatris.listA.length} {isEn ? 'Limits Exceeded' : 'Limit Aşımı'}
                       </strong>
-                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
-                        compareMetrics.rateDiff >= 0 
-                          ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400' 
-                          : 'bg-red-500/10 text-red-600'
-                      }`}>
-                        %{compareMetrics.statsB.savingsRate} vs %{compareMetrics.statsA.savingsRate}
-                      </span>
+                      <div className="text-[9px] font-semibold text-slate-400 truncate max-w-full">
+                        {compareBudgetMatris.listA.length > 0 ? compareBudgetMatris.listA.map(l => l.name).join(', ') : (isEn ? '0 Overruns' : 'Mükemmel Uyum')}
+                      </div>
+                    </div>
+                    {/* Period B */}
+                    <div className="p-3.5 bg-slate-50/50 dark:bg-slate-800/25 border border-slate-100 dark:border-slate-800 rounded-2xl space-y-1.5">
+                      <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">B: {comparePeriodTxs.displayB}</span>
+                      <strong className="text-lg font-black text-slate-800 dark:text-slate-100 block">
+                        {compareBudgetMatris.listB.length} {isEn ? 'Limits Exceeded' : 'Limit Aşımı'}
+                      </strong>
+                      <div className="text-[9px] font-semibold text-slate-400 truncate max-w-full">
+                        {compareBudgetMatris.listB.length > 0 ? compareBudgetMatris.listB.map(l => l.name).join(', ') : (isEn ? '0 Overruns' : 'Mükemmel Uyum')}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1764,7 +2430,7 @@ export const Reports: React.FC = () => {
                             }} 
                             cursor={{ fill: document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.03)' : 'rgba(15, 23, 42, 0.02)' }}
                           />
-                          <Legend wrapperStyle={{ fontSize: 10, paddingTop: 10 }} />
+                          <Legend wrapperStyle={{ fontSize: 10, paddingTop: 10 }} formatter={renderLegendText} />
                           <Bar name={`${t.tablePeriodA} (${comparePeriodTxs.displayA})`} dataKey="valA" fill="rgb(var(--brand-500))" radius={[4, 4, 0, 0]} maxBarSize={20} />
                           <Bar name={`${t.tablePeriodB} (${comparePeriodTxs.displayB})`} dataKey="valB" fill="#3B82F6" radius={[4, 4, 0, 0]} maxBarSize={20} />
                         </BarChart>
@@ -1809,9 +2475,89 @@ export const Reports: React.FC = () => {
                           }} 
                           cursor={{ stroke: document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.15)' : 'rgba(15, 23, 42, 0.1)', strokeWidth: 1, strokeDasharray: '4 4' }}
                         />
-                        <Legend wrapperStyle={{ fontSize: 10, paddingTop: 10 }} />
+                        <Legend wrapperStyle={{ fontSize: 10, paddingTop: 10 }} formatter={renderLegendText} />
                         <Area name={`${t.tablePeriodA} (${comparePeriodTxs.displayA})`} type="monotone" dataKey="valA" stroke="rgb(var(--brand-500))" strokeWidth={2.5} fillOpacity={1} fill="url(#gradVelA)" />
                         <Area name={`${t.tablePeriodB} (${comparePeriodTxs.displayB})`} type="monotone" dataKey="valB" stroke="#3B82F6" strokeWidth={2.5} fillOpacity={1} fill="url(#gradVelB)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* 3. Grouped Payment Method Spending Bar Chart */}
+                <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/60 dark:border-slate-800/80 p-5 shadow-sm space-y-4">
+                  <div>
+                    <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                      {t.comparePaymentTitle}
+                    </h3>
+                    <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 tracking-wider uppercase mt-0.5">
+                      {t.comparePaymentSubtitle}
+                    </p>
+                  </div>
+                  <div className="h-[300px] flex items-center justify-center">
+                    {comparePaymentData.length === 0 ? (
+                      <span className="text-xs font-semibold text-slate-400">{t.noExpenses}</span>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={comparePaymentData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={document.documentElement.classList.contains('dark') ? '#1E293B' : '#E2E8F0'} vertical={false} />
+                          <XAxis dataKey="name" stroke={document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#4B5563'} fontSize={9} tickLine={false} />
+                          <YAxis stroke={document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#4B5563'} fontSize={9} tickLine={false} axisLine={false} />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: document.documentElement.classList.contains('dark') ? '#0F172A' : '#FFFFFF',
+                              borderColor: document.documentElement.classList.contains('dark') ? '#334155' : '#E2E8F0',
+                              borderRadius: '12px',
+                              fontSize: '11px'
+                            }} 
+                            cursor={{ fill: document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.03)' : 'rgba(15, 23, 42, 0.02)' }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: 10, paddingTop: 10 }} formatter={renderLegendText} />
+                          <Bar name={`${t.tablePeriodA} (${comparePeriodTxs.displayA})`} dataKey="valA" fill="#8B5CF6" radius={[4, 4, 0, 0]} maxBarSize={20} />
+                          <Bar name={`${t.tablePeriodB} (${comparePeriodTxs.displayB})`} dataKey="valB" fill="#F59E0B" radius={[4, 4, 0, 0]} maxBarSize={20} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                </div>
+
+                {/* 4. Cumulative Net Cash Flow Area Chart */}
+                <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/60 dark:border-slate-800/80 p-5 shadow-sm space-y-4">
+                  <div>
+                    <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                      {t.compareNetFlowTitle}
+                    </h3>
+                    <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 tracking-wider uppercase mt-0.5">
+                      {t.compareNetFlowSubtitle}
+                    </p>
+                  </div>
+                  <div className="h-[300px] flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={compareNetFlowData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="gradNetA" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10B981" stopOpacity={0.25}/>
+                            <stop offset="95%" stopColor="#10B981" stopOpacity={0.0}/>
+                          </linearGradient>
+                          <linearGradient id="gradNetB" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.25}/>
+                            <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke={document.documentElement.classList.contains('dark') ? '#1E293B' : '#E2E8F0'} vertical={false} />
+                        <XAxis dataKey="name" stroke={document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#4B5563'} fontSize={9} tickLine={false} />
+                        <YAxis stroke={document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#4B5563'} fontSize={9} tickLine={false} axisLine={false} />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: document.documentElement.classList.contains('dark') ? '#0F172A' : '#FFFFFF',
+                            borderColor: document.documentElement.classList.contains('dark') ? '#334155' : '#E2E8F0',
+                            borderRadius: '12px',
+                            fontSize: '11px'
+                          }} 
+                          cursor={{ stroke: document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.15)' : 'rgba(15, 23, 42, 0.1)', strokeWidth: 1, strokeDasharray: '4 4' }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 10, paddingTop: 10 }} formatter={renderLegendText} />
+                        <Area name={`${t.tablePeriodA} (${comparePeriodTxs.displayA})`} type="monotone" dataKey="valA" stroke="#10B981" strokeWidth={2.5} fillOpacity={1} fill="url(#gradNetA)" />
+                        <Area name={`${t.tablePeriodB} (${comparePeriodTxs.displayB})`} type="monotone" dataKey="valB" stroke="#8B5CF6" strokeWidth={2.5} fillOpacity={1} fill="url(#gradNetB)" />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -1821,9 +2567,9 @@ export const Reports: React.FC = () => {
 
               {/* Dynamic Analist Coach Insight Banner */}
               {aiCompareInsights.length > 0 && (
-                <div className="p-5 bg-indigo-500/5 dark:bg-indigo-500/5 rounded-3xl border border-indigo-100 dark:border-indigo-950/30 text-slate-800 dark:text-slate-200 space-y-4 animate-in slide-in-from-top-2 duration-300">
-                  <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400">
-                    <Sparkles size={18} className="animate-pulse" />
+                <div className="p-5 bg-brand-500/5 dark:bg-brand-500/5 rounded-3xl border border-brand-100 dark:border-brand-950/30 text-slate-800 dark:text-slate-200 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                  <div className="flex items-center space-x-2 text-brand-600 dark:text-brand-400">
+                    <TrendingUp size={18} className="animate-pulse" />
                     <h4 className="text-xs font-black uppercase tracking-wider">{t.aiReportHeading}</h4>
                   </div>
                   <div className="space-y-2 text-xs font-semibold leading-relaxed">
@@ -1844,15 +2590,15 @@ export const Reports: React.FC = () => {
                 <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider pl-1">
                   {t.comparisonMetrics}
                 </h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
+                <div className="overflow-x-auto custom-scrollbar pb-2">
+                  <table className="w-full text-xs min-w-[650px]">
                     <thead>
                       <tr className="border-b border-slate-100 dark:border-slate-800/80 text-slate-400 dark:text-slate-500 uppercase tracking-wider text-[9px]">
-                        <th className="text-left py-3 font-extrabold">{t.tableCategory}</th>
-                        <th className="text-right py-3 font-extrabold">{t.tablePeriodA} ({comparePeriodTxs.displayA})</th>
-                        <th className="text-right py-3 font-extrabold">{t.tablePeriodB} ({comparePeriodTxs.displayB})</th>
-                        <th className="text-right py-3 font-extrabold">{t.tableDiff}</th>
-                        <th className="text-right py-3 font-extrabold">{t.tablePctChange}</th>
+                        <th className="text-left py-3 font-extrabold whitespace-nowrap w-[24%]">{t.tableCategory}</th>
+                        <th className="text-left py-3 font-extrabold whitespace-nowrap w-[19%] pl-4">{t.tablePeriodA} ({comparePeriodTxs.displayA})</th>
+                        <th className="text-left py-3 font-extrabold whitespace-nowrap w-[19%] pl-4">{t.tablePeriodB} ({comparePeriodTxs.displayB})</th>
+                        <th className="text-left py-3 font-extrabold whitespace-nowrap w-[19%] pl-4">{t.tableDiff}</th>
+                        <th className="text-right py-3 font-extrabold whitespace-nowrap w-[19%]">{t.tablePctChange}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50 font-medium">
@@ -1862,20 +2608,20 @@ export const Reports: React.FC = () => {
                         
                         return (
                           <tr key={cat.catId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-all text-slate-700 dark:text-slate-300">
-                            <td className="py-3 flex items-center space-x-2">
+                            <td className="py-3 flex items-center space-x-2 whitespace-nowrap">
                               <span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ backgroundColor: cat.color }} />
-                              <span className="font-extrabold text-slate-850 dark:text-slate-200">{cat.name}</span>
+                              <span className="font-extrabold text-slate-800 dark:text-slate-200">{cat.name}</span>
                             </td>
-                            <td className="text-right py-3 text-slate-500 dark:text-slate-400">
+                            <td className="text-left py-3 text-slate-500 dark:text-slate-400 whitespace-nowrap pl-4">
                               {formatCurrency(cat.valA, currency)}
                             </td>
-                            <td className="text-right py-3 font-extrabold text-slate-800 dark:text-slate-100">
+                            <td className="text-left py-3 font-extrabold text-slate-800 dark:text-slate-100 whitespace-nowrap pl-4">
                               {formatCurrency(cat.valB, currency)}
                             </td>
-                            <td className={`text-right py-3 font-extrabold ${diff > 0 ? 'text-red-500' : diff < 0 ? 'text-emerald-500' : 'text-slate-400'}`}>
+                            <td className={`text-left py-3 font-extrabold whitespace-nowrap pl-4 ${diff > 0 ? 'text-red-500' : diff < 0 ? 'text-emerald-500' : 'text-slate-400'}`}>
                               {diff > 0 ? '+' : ''}{formatCurrency(diff, currency)}
                             </td>
-                            <td className="text-right py-3">
+                            <td className="text-right py-3 whitespace-nowrap">
                               <span className={`inline-flex items-center gap-1 font-black px-1.5 py-0.5 rounded ${
                                 diff > 0 
                                   ? 'bg-red-500/10 text-red-500' 
@@ -1897,6 +2643,97 @@ export const Reports: React.FC = () => {
 
             </>
           )}
+
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* TAB 4: PREMIUM ANALYTICS INSIGHTS VIEW                        */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'insights' && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          
+          {/* Sub Tab Navigation bar */}
+          <div className="flex items-center gap-2 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200/50 dark:border-slate-700/40 max-w-full overflow-x-auto scrollbar-none">
+            <button
+              onClick={() => setActiveInsightTab('forecaster')}
+              className={`py-2 px-4 rounded-xl text-xs font-bold transition-all shrink-0 whitespace-nowrap ${
+                activeInsightTab === 'forecaster'
+                  ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm border border-slate-200/40 dark:border-slate-800/40'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+              }`}
+            >
+              {isEn ? 'Committed Costs' : 'Sabit Gider Tahmini'}
+            </button>
+            <button
+              onClick={() => setActiveInsightTab('snowball')}
+              className={`py-2 px-4 rounded-xl text-xs font-bold transition-all shrink-0 whitespace-nowrap ${
+                activeInsightTab === 'snowball'
+                  ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm border border-slate-200/40 dark:border-slate-800/40'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+              }`}
+            >
+              {isEn ? 'Debt Snowball' : 'Borç Kartopu'}
+            </button>
+            <button
+              onClick={() => setActiveInsightTab('wealth')}
+              className={`py-2 px-4 rounded-xl text-xs font-bold transition-all shrink-0 whitespace-nowrap ${
+                activeInsightTab === 'wealth'
+                  ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm border border-slate-200/40 dark:border-slate-800/40'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+              }`}
+            >
+              {isEn ? 'FI/RE & Wealth' : 'FI/RE & Servet Projeksiyonu'}
+            </button>
+            <button
+              onClick={() => setActiveInsightTab('heatmap')}
+              className={`py-2 px-4 rounded-xl text-xs font-bold transition-all shrink-0 whitespace-nowrap ${
+                activeInsightTab === 'heatmap'
+                  ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 shadow-sm border border-slate-200/40 dark:border-slate-800/40'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+              }`}
+            >
+              {isEn ? 'Spending Heatmap' : 'Harcama Sıcaklık Takvimi'}
+            </button>
+          </div>
+
+          {/* Sub Tab Contents */}
+          <div className="pt-2">
+            {activeInsightTab === 'forecaster' && (
+              <ForecasterReport
+                subscriptions={subscriptions}
+                recurringTransactions={recurringTransactions}
+                transactions={transactions}
+                currency={currency}
+                isEn={isEn}
+              />
+            )}
+            {activeInsightTab === 'snowball' && (
+              <DebtSnowballReport
+                debts={debts}
+                avgMonthlyIncome={avgMonthlyIncome}
+                currency={currency}
+                isEn={isEn}
+              />
+            )}
+            {activeInsightTab === 'wealth' && (
+              <WealthTrajectoryReport
+                assets={assets}
+                goals={goals}
+                transactions={transactions}
+                currency={currency}
+                isEn={isEn}
+              />
+            )}
+            {activeInsightTab === 'heatmap' && (
+              <SpendingHeatmapReport
+                transactions={transactions}
+                categories={categories}
+                currency={currency}
+                isEn={isEn}
+              />
+            )}
+          </div>
 
         </div>
       )}
