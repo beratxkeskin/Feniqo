@@ -60,9 +60,9 @@ export default defineConfig({
         ]
       },
       manifest: {
-        name: 'feniqo | Kişisel Finans ve Varlık Yönetimi',
-        short_name: 'feniqo',
-        description: 'Gelir, gider, bütçe ve harcama alışkanlıklarınızı kolayca takip edin. Kişisel finans ve varlık yönetim koçunuz feniqo.',
+        name: 'Feniqo | Kişisel Finans ve Varlık Yönetimi',
+        short_name: 'Feniqo',
+        description: 'Gelir, gider, bütçe ve harcama alışkanlıklarınızı kolayca takip edin. Kişisel finans ve varlık yönetim koçunuz Feniqo.',
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',
