@@ -39,10 +39,15 @@ export const Login: React.FC = () => {
       if (isRegister) {
         const res = await signUp(email.trim(), password, fullName.trim());
         if (res.success) {
-          setSuccessMessage('Kayıt başarılı! Giriş yapılıyor...');
-          setTimeout(async () => {
-            await signIn(email.trim(), password);
-          }, 1000);
+          if ((res as any).sessionRequired) {
+            setSuccessMessage('Kayıt başarılı! Hesabınızı etkinleştirmek için lütfen e-posta adresinize gönderilen onay linkine tıklayın.');
+            setLocalLoading(false);
+          } else {
+            setSuccessMessage('Kayıt başarılı! Giriş yapılıyor...');
+            setTimeout(async () => {
+              await signIn(email.trim(), password);
+            }, 1000);
+          }
         } else {
           setErrorMessage(res.error || 'Kayıt sırasında bir hata oluştu.');
         }
@@ -55,6 +60,8 @@ export const Login: React.FC = () => {
     } catch (err: any) {
       setErrorMessage('Beklenmeyen bir hata oluştu.');
     } finally {
+      // If email confirmation is required, we don't turn off localLoading here because user needs to read the message and we don't want them submitting again.
+      // Actually, we turn it off so they can correct if needed, but we already set it to false above.
       setLocalLoading(false);
     }
   };
@@ -63,7 +70,7 @@ export const Login: React.FC = () => {
     setLocalLoading(true);
     setErrorMessage('');
     try {
-      await signIn('demo@moneymate.com', '', true);
+      await signIn('demo@feniqo.com', '', true);
     } catch (e) {
       setErrorMessage('Demo modu başlatılamadı.');
     } finally {
@@ -88,7 +95,7 @@ export const Login: React.FC = () => {
           </div>
           <div>
             <h1 className="text-2xl font-extrabold text-white tracking-tight">
-              MoneyMate
+              Feniqo
             </h1>
             <p className="text-xs font-medium text-slate-400 dark:text-slate-400 mt-1 max-w-[280px]">
               Kişisel finansınızı modern yöntemlerle, kolayca kontrol altına alın.

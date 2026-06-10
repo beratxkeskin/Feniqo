@@ -179,7 +179,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password: password || '',
         options: {
@@ -192,7 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
 
       setLoading(false);
-      return { success: true };
+      return { success: true, sessionRequired: !data.session };
     } catch (error: any) {
       setLoading(false);
       return { success: false, error: error.message || 'Kayıt olunurken bir hata oluştu.' };

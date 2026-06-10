@@ -22,7 +22,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ size = 'md', ful
       </div>
       {fullPage && (
         <p className="text-slate-500 dark:text-slate-400 font-medium text-sm animate-pulse">
-          MoneyMate hazırlanıyor...
+          Feniqo hazırlanıyor...
         </p>
       )}
     </div>
