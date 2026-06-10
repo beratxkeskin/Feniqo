@@ -417,7 +417,7 @@ export const Workspace: React.FC = () => {
           
           {/* Status info */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm flex flex-col items-center text-center space-y-4">
+            <div className="premium-card flex flex-col items-center text-center space-y-4">
               <div className="p-4 bg-slate-100 dark:bg-slate-800/80 rounded-full text-slate-400">
                 <Wallet size={36} className="text-brand-500" />
               </div>
@@ -437,7 +437,7 @@ export const Workspace: React.FC = () => {
             </div>
             
             {/* Create Form */}
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-4">
+            <div className="premium-card space-y-4">
               <h3 className="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wider flex items-center space-x-2">
                 <Plus size={16} className="text-brand-500" />
                 <span>{t.createTitle}</span>
@@ -463,7 +463,7 @@ export const Workspace: React.FC = () => {
           </div>
 
           {/* Join Form (Right Column) */}
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-4">
+          <div className="premium-card space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wider flex items-center space-x-2">
               <UserPlus size={16} className="text-brand-500" />
               <span>{t.joinTitle}</span>
@@ -504,7 +504,7 @@ export const Workspace: React.FC = () => {
           <div className="lg:col-span-2 space-y-6">
             
             {/* Active Workspace Info Panel */}
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-5">
+            <div className="premium-card space-y-5">
               <div className="flex items-start justify-between">
                 <div>
                   <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded-md">
@@ -559,7 +559,7 @@ export const Workspace: React.FC = () => {
             </div>
 
             {/* Split Calculator Card */}
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-6">
+            <div className="premium-card space-y-6">
               
               <div className="pb-4 border-b border-slate-100 dark:border-slate-800/60">
                 <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center space-x-2">
@@ -642,7 +642,7 @@ export const Workspace: React.FC = () => {
           </div>
 
           {/* Members listing (Right Column) */}
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-4 shrink-0">
+          <div className="premium-card space-y-4 shrink-0">
             <h3 className="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-wider flex items-center space-x-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
               <Users size={16} className="text-brand-500" />
               <span>{t.membersTitle} ({Math.max(1, workspaceMembers.length)})</span>

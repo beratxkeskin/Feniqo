@@ -58,7 +58,7 @@ export const MoneyScoreGauge: React.FC<MoneyScoreGaugeProps> = ({ scoreData }) =
   const currentConfig = levelConfig[level];
 
   return (
-    <div className={`p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 shadow-2xl transition-all duration-300 ${currentConfig.glowClass}`}>
+    <div className={`premium-card transition-all duration-300 ${currentConfig.glowClass}`}>
       
       {/* Header */}
       <div className="flex items-center justify-between mb-5">

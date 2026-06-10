@@ -3,6 +3,7 @@ import type { Debt } from '../../db/types';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import { parseLoanMetadata, extractBaseDescription } from '../../utils/loanUtils';
 import { 
   Calendar, 
   Trash2, 
@@ -20,6 +21,7 @@ interface DebtCardProps {
   onEdit: (debt: Debt) => void;
   onDelete: (id: string) => void;
   onTogglePaidStatus: (id: string) => void;
+  onStartPayment?: (debt: Debt) => void;
 }
 
 const translations = {
@@ -39,6 +41,7 @@ const translations = {
     note: 'Not',
     toPay: 'Ödeyeceğim Tutar',
     toReceive: 'Alacağım Tutar',
+    payLoan: 'Kredi Ödemesi Yap',
   },
   en: {
     debt: 'Debt',
@@ -56,13 +59,16 @@ const translations = {
     note: 'Note',
     toPay: 'Amount to Pay',
     toReceive: 'Amount to Receive',
+    payLoan: 'Pay Loan',
   }
 };
 
-export const DebtCard: React.FC<DebtCardProps> = ({ debt, onEdit, onDelete, onTogglePaidStatus }) => {
+export const DebtCard: React.FC<DebtCardProps> = ({ debt, onEdit, onDelete, onTogglePaidStatus, onStartPayment }) => {
   const { user } = useAuth();
   const { currentUserRole } = useData();
   const [isToggling, setIsToggling] = useState(false);
+
+  const loanMeta = parseLoanMetadata(debt.description);
   const lang = user?.lang || 'tr';
   const t = translations[lang];
   const currency = user?.currency || 'TRY';
@@ -252,25 +258,74 @@ export const DebtCard: React.FC<DebtCardProps> = ({ debt, onEdit, onDelete, onTo
         </div>
 
         {/* Description / Note */}
-        {debt.description && (
+        {extractBaseDescription(debt.description) && (
           <div className="p-3 bg-slate-50/60 dark:bg-slate-800/30 border border-slate-100/50 dark:border-slate-800/40 rounded-2xl">
             <span className="text-[9px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 block mb-0.5">
               {t.note}
             </span>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-              {debt.description}
+              {extractBaseDescription(debt.description)}
             </p>
+          </div>
+        )}
+
+        {/* Loan progress bar & schedule info */}
+        {loanMeta && (
+          <div className="p-3.5 bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/40 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500">
+              <span>{lang === 'en' ? 'Installment Progress' : 'Taksit İlerlemesi'}</span>
+              <span className="text-slate-600 dark:text-slate-350 font-black">
+                {loanMeta.installments.filter(i => i.isPaid).length} / {loanMeta.installments.length} {lang === 'en' ? 'Paid' : 'Ödendi'}
+              </span>
+            </div>
+            {/* Progress Bar */}
+            <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-brand-500 rounded-full transition-all duration-500" 
+                style={{ 
+                  width: `${(loanMeta.installments.filter(i => i.isPaid).length / loanMeta.installments.length) * 100}%` 
+                }}
+              />
+            </div>
+
+            {/* Next Payment details */}
+            {(() => {
+              const nextInst = loanMeta.installments.find(i => !i.isPaid);
+              if (!nextInst) return null;
+              return (
+                <div className="flex justify-between items-center text-[10px] pt-1.5 border-t border-slate-200/50 dark:border-slate-700/50">
+                  <div className="flex flex-col">
+                    <span className="text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">{lang === 'en' ? 'Next Due' : 'Sıradaki Vade'}</span>
+                    <strong className="text-slate-700 dark:text-slate-300 font-semibold mt-0.5">{formatDate(nextInst.dueDate)}</strong>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className="text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">{lang === 'en' ? 'Installment Amount' : 'Taksit Tutarı'}</span>
+                    <strong className="text-slate-800 dark:text-slate-250 font-extrabold mt-0.5 text-brand-600 dark:text-brand-400">
+                      {formatCurrency(nextInst.total, currency)}
+                    </strong>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>
 
       {/* Quick Paid Status Toggle Button */}
       {currentUserRole !== 'viewer' && (
-        <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60 mt-3.5">
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60 mt-3.5 flex gap-2">
+          {!isPaid && isDebt && onStartPayment && (
+            <button
+              onClick={() => onStartPayment(debt)}
+              className="flex-1 flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all duration-300 cursor-pointer bg-brand-500 text-white hover:bg-brand-600 shadow-md shadow-brand-500/10 hover:shadow-lg hover:shadow-brand-500/20 active:scale-[0.97]"
+            >
+              <span>{t.payLoan}</span>
+            </button>
+          )}
           <button
             onClick={handleToggle}
             disabled={isToggling}
-            className={`w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer ${
+            className={`${(!isPaid && isDebt && onStartPayment) ? 'flex-1' : 'w-full'} flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer ${
               isPaid
                 ? 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800'
                 : isDebt

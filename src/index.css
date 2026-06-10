@@ -159,34 +159,58 @@ html.theme-feniqo {
 
   /* Glassmorphism Styles */
   .glass-panel {
-    background: rgba(255, 255, 255, 0.75);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(226, 232, 240, 0.8);
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(226, 232, 240, 0.5);
   }
 
   .dark .glass-panel {
-    background: rgba(15, 23, 42, 0.8);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(51, 65, 85, 0.5);
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(51, 65, 85, 0.35);
+  }
+
+  /* Premium Card with Soft Shadow and Thin Border */
+  .premium-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(226, 232, 240, 0.5);
+    @apply rounded-3xl p-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.02)] transition-all duration-300 hover:shadow-[0_12px_40px_0_rgba(0,0,0,0.04)] hover:-translate-y-0.5;
+  }
+
+  .dark .premium-card {
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(51, 65, 85, 0.3);
+    @apply shadow-[0_8px_32px_0_rgba(0,0,0,0.15)] hover:shadow-[0_12px_40px_0_rgba(0,0,0,0.25)];
   }
 
   /* Input Styles for Premium feel */
   .premium-input {
-    @apply w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all;
+    @apply w-full px-5 py-3 rounded-full border border-slate-200/80 dark:border-slate-800 bg-white/40 dark:bg-slate-900/30 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/80 focus:border-transparent transition-all duration-300 focus:bg-white dark:focus:bg-slate-900;
   }
 
   .premium-btn-primary {
-    @apply px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-medium focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm shadow-brand-500/20 active:scale-[0.98];
+    background: linear-gradient(135deg, rgb(var(--brand-500)) 0%, rgb(var(--brand-600)) 100%) !important;
+    @apply px-6 py-3 rounded-full text-white font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg shadow-brand-500/15 hover:shadow-xl hover:shadow-brand-500/25 hover:-translate-y-0.5 active:scale-[0.96] active:translate-y-0 cursor-pointer;
   }
 
   .premium-btn-secondary {
-    @apply px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98];
+    @apply px-6 py-3 rounded-full border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:-translate-y-0.5 active:scale-[0.96] active:translate-y-0 cursor-pointer;
   }
 
   .premium-btn-danger {
-    @apply px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm shadow-red-500/20 active:scale-[0.98];
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+    @apply px-6 py-3 rounded-full text-white font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg shadow-red-500/15 hover:shadow-xl hover:shadow-red-500/25 hover:-translate-y-0.5 active:scale-[0.96] active:translate-y-0 cursor-pointer;
+  }
+
+  .premium-active-menu {
+    background: linear-gradient(135deg, rgb(var(--brand-500)) 0%, rgb(var(--brand-600)) 100%) !important;
+    @apply text-white shadow-lg shadow-brand-500/15 scale-[1.02] hover:-translate-y-0.5;
   }
 }
 
@@ -232,8 +256,8 @@ html.theme-feniqo {
 html.theme-sunset body,
 html.theme-sunset .min-h-screen {
   background-color: #faf6ee !important;
-  background-image: radial-gradient(at 0% 0%, rgba(212, 83, 126, 0.05) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(186, 117, 23, 0.04) 0px, transparent 50%) !important;
+  background-image: radial-gradient(at 0% 0%, rgba(212, 83, 126, 0.12) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(186, 117, 23, 0.1) 0px, transparent 50%) !important;
   background-attachment: fixed;
 }
 
@@ -241,17 +265,17 @@ html.theme-sunset.dark body,
 html.theme-sunset.dark .bg-slate-950,
 html.theme-sunset.dark .dark\:bg-slate-950,
 html.theme-sunset.dark .min-h-screen {
-  background-color: #211814 !important;
-  /* Lighter Warm Golden Black */
-  background-image: radial-gradient(at 0% 0%, rgba(186, 117, 23, 0.09) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(212, 83, 126, 0.09) 0px, transparent 50%) !important;
+  background-color: #19120f !important;
+  background-image: radial-gradient(at 0% 0%, rgba(186, 117, 23, 0.22) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(212, 83, 126, 0.22) 0px, transparent 50%) !important;
   background-attachment: fixed;
 }
 
 /* Light mode panels */
 html.theme-sunset:not(.dark) .bg-white,
-html.theme-sunset:not(.dark) .glass-panel {
-  background-color: #fdfbf7 !important;
+html.theme-sunset:not(.dark) .glass-panel,
+html.theme-sunset:not(.dark) .premium-card {
+  background-color: rgba(253, 251, 247, 0.7) !important;
   border-color: rgba(235, 196, 134, 0.35) !important;
 }
 
@@ -259,10 +283,21 @@ html.theme-sunset:not(.dark) .glass-panel {
 html.theme-sunset.dark .bg-slate-900,
 html.theme-sunset.dark .dark\:bg-slate-900,
 html.theme-sunset.dark .glass-panel,
-html.theme-sunset.dark aside {
-  background-color: #2e231c !important;
+html.theme-sunset.dark aside,
+html.theme-sunset.dark .premium-card {
+  background-color: rgba(46, 35, 28, 0.65) !important;
   /* Lighter Golden Dark Chocolate Card */
   border-color: rgba(133, 79, 11, 0.3) !important;
+}
+
+/* Sunset Premium Card Hover Glow */
+html.theme-sunset .premium-card:hover {
+  border-color: rgba(186, 117, 23, 0.45) !important;
+  box-shadow: 0 15px 35px -5px rgba(186, 117, 23, 0.08), 0 0 15px 0 rgba(186, 117, 23, 0.04) !important;
+}
+html.theme-sunset.dark .premium-card:hover {
+  border-color: rgba(186, 117, 23, 0.45) !important;
+  box-shadow: 0 15px 35px -5px rgba(186, 117, 23, 0.2), 0 0 20px 0 rgba(186, 117, 23, 0.08) !important;
 }
 
 /* Light mode borders */
@@ -298,8 +333,8 @@ html.theme-sunset.dark ::-webkit-scrollbar-thumb:hover {
 html.theme-rose body,
 html.theme-rose .min-h-screen {
   background-color: #fdf8f9 !important;
-  background-image: radial-gradient(at 0% 0%, rgba(213, 96, 130, 0.05) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(153, 53, 86, 0.04) 0px, transparent 50%) !important;
+  background-image: radial-gradient(at 0% 0%, rgba(213, 96, 130, 0.12) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(153, 53, 86, 0.1) 0px, transparent 50%) !important;
   background-attachment: fixed;
 }
 
@@ -307,17 +342,17 @@ html.theme-rose.dark body,
 html.theme-rose.dark .bg-slate-950,
 html.theme-rose.dark .dark\:bg-slate-950,
 html.theme-rose.dark .min-h-screen {
-  background-color: #22151b !important;
-  /* Lighter Crimson Dark Mode Background */
-  background-image: radial-gradient(at 0% 0%, rgba(153, 53, 86, 0.1) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(213, 96, 130, 0.08) 0px, transparent 50%) !important;
+  background-color: #1b1015 !important;
+  background-image: radial-gradient(at 0% 0%, rgba(153, 53, 86, 0.24) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(213, 96, 130, 0.2) 0px, transparent 50%) !important;
   background-attachment: fixed;
 }
 
 /* Light mode panels */
 html.theme-rose:not(.dark) .bg-white,
-html.theme-rose:not(.dark) .glass-panel {
-  background-color: #fefafb !important;
+html.theme-rose:not(.dark) .glass-panel,
+html.theme-rose:not(.dark) .premium-card {
+  background-color: rgba(254, 250, 251, 0.7) !important;
   border-color: rgba(246, 204, 215, 0.4) !important;
 }
 
@@ -325,10 +360,21 @@ html.theme-rose:not(.dark) .glass-panel {
 html.theme-rose.dark .bg-slate-900,
 html.theme-rose.dark .dark\:bg-slate-900,
 html.theme-rose.dark .glass-panel,
-html.theme-rose.dark aside {
-  background-color: #2d1e25 !important;
+html.theme-rose.dark aside,
+html.theme-rose.dark .premium-card {
+  background-color: rgba(45, 30, 37, 0.65) !important;
   /* Lighter Burgundy Dark Card */
   border-color: rgba(114, 36, 62, 0.3) !important;
+}
+
+/* Rose Premium Card Hover Glow */
+html.theme-rose .premium-card:hover {
+  border-color: rgba(213, 96, 130, 0.45) !important;
+  box-shadow: 0 15px 35px -5px rgba(213, 96, 130, 0.08), 0 0 15px 0 rgba(213, 96, 130, 0.04) !important;
+}
+html.theme-rose.dark .premium-card:hover {
+  border-color: rgba(153, 53, 86, 0.45) !important;
+  box-shadow: 0 15px 35px -5px rgba(153, 53, 86, 0.2), 0 0 20px 0 rgba(153, 53, 86, 0.08) !important;
 }
 
 /* Light mode borders */
@@ -364,33 +410,45 @@ html.theme-rose.dark ::-webkit-scrollbar-thumb:hover {
 html.theme-feniqo body,
 html.theme-feniqo .min-h-screen {
   background-color: #f4faf7 !important; /* Pristine light mint green */
-  background-image: radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.05) 0px, transparent 50%),
-                    radial-gradient(at 100% 100%, rgba(5, 150, 105, 0.03) 0px, transparent 50%) !important;
+  background-image: radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.12) 0px, transparent 50%),
+                    radial-gradient(at 100% 100%, rgba(5, 150, 105, 0.08) 0px, transparent 50%) !important;
   background-attachment: fixed;
 }
 html.theme-feniqo.dark body,
 html.theme-feniqo.dark .bg-slate-950,
 html.theme-feniqo.dark .dark\:bg-slate-950,
 html.theme-feniqo.dark .min-h-screen {
-  background-color: #0f1c16 !important; /* Extremely dark lush emerald forest */
-  background-image: radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.09) 0px, transparent 50%),
-                    radial-gradient(at 100% 100%, rgba(5, 150, 105, 0.06) 0px, transparent 50%) !important;
+  background-color: #0b1410 !important; /* Extremely dark lush emerald forest */
+  background-image: radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.24) 0px, transparent 50%),
+                    radial-gradient(at 100% 100%, rgba(5, 150, 105, 0.18) 0px, transparent 50%) !important;
   background-attachment: fixed;
 }
 
 /* Light mode panels */
 html.theme-feniqo:not(.dark) .bg-white,
-html.theme-feniqo:not(.dark) .glass-panel {
-  background-color: #fbfdfc !important;
+html.theme-feniqo:not(.dark) .glass-panel,
+html.theme-feniqo:not(.dark) .premium-card {
+  background-color: rgba(251, 253, 252, 0.7) !important;
   border-color: rgba(167, 243, 208, 0.35) !important;
 }
 /* Dark mode panels */
 html.theme-feniqo.dark .bg-slate-900,
 html.theme-feniqo.dark .dark\:bg-slate-900,
 html.theme-feniqo.dark .glass-panel,
-html.theme-feniqo.dark aside {
-  background-color: #16281e !important; /* Dark emerald wood card */
+html.theme-feniqo.dark aside,
+html.theme-feniqo.dark .premium-card {
+  background-color: rgba(22, 40, 30, 0.65) !important; /* Dark emerald wood card */
   border-color: rgba(4, 120, 87, 0.25) !important;
+}
+
+/* Feniqo Premium Card Hover Glow */
+html.theme-feniqo .premium-card:hover {
+  border-color: rgba(16, 185, 129, 0.45) !important;
+  box-shadow: 0 15px 35px -5px rgba(16, 185, 129, 0.08), 0 0 15px 0 rgba(16, 185, 129, 0.04) !important;
+}
+html.theme-feniqo.dark .premium-card:hover {
+  border-color: rgba(16, 185, 129, 0.45) !important;
+  box-shadow: 0 15px 35px -5px rgba(16, 185, 129, 0.2), 0 0 20px 0 rgba(16, 185, 129, 0.08) !important;
 }
 
 /* Light mode borders */

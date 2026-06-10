@@ -72,7 +72,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   const clampedProgress = progress != null ? Math.max(0, Math.min(100, progress)) : null;
 
   return (
-    <div className={`group relative rounded-2xl border ${v.border} bg-white dark:bg-slate-900 shadow-sm hover:shadow-lg hover:scale-[1.015] transition-all duration-300 flex flex-col justify-between overflow-hidden`}>
+    <div className={`premium-card group relative border ${v.border} hover:scale-[1.015] transition-all duration-300 flex flex-col justify-between overflow-hidden`}>
       
       {/* Subtle radial glow background */}
       <div className={`absolute inset-0 bg-gradient-to-br ${v.glow} pointer-events-none`} />

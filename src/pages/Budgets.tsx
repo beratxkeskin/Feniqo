@@ -368,7 +368,7 @@ export const Budgets: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         
         {/* Donut Chart & Status Card */}
-        <div className="lg:col-span-1 p-5 rounded-3xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 shadow-sm space-y-4 hover:shadow-md transition-all duration-200 flex flex-col items-center justify-center relative overflow-hidden group">
+        <div className="premium-card lg:col-span-1 flex flex-col items-center justify-center relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/10 dark:bg-brand-500/5 blur-3xl rounded-full pointer-events-none" />
           
           <div className="text-center w-full">
@@ -453,7 +453,7 @@ export const Budgets: React.FC = () => {
         </div>
 
         {/* AI Coach Detailed Analysis Card */}
-        <div className="lg:col-span-2 p-5 rounded-3xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-200 relative overflow-hidden group">
+        <div className="premium-card lg:col-span-2 flex flex-col justify-between relative overflow-hidden group">
           <div className="absolute top-0 left-0 w-32 h-32 bg-brand-500/10 dark:bg-brand-500/5 blur-3xl rounded-full pointer-events-none" />
           
           <div className="space-y-4 flex-1">
@@ -561,7 +561,7 @@ export const Budgets: React.FC = () => {
 
       {/* AI Coach Alert Suggestion Banner */}
       {budgetsExceedingWarning.length > 0 && (
-        <div className="p-5 rounded-3xl border border-brand-200 dark:border-brand-500/20 bg-gradient-to-br from-brand-500/5 to-brand-500/10 dark:from-brand-950/5 dark:to-brand-950/10 text-slate-800 dark:text-slate-200 flex items-start space-x-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300 mb-6">
+        <div className="p-5 rounded-3xl border border-brand-500/15 bg-white/60 dark:bg-slate-900/40 backdrop-blur-md text-slate-800 dark:text-slate-200 flex items-start space-x-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300 mb-6 group hover:shadow-md transition-all duration-300">
           <div className="p-3 bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-2xl flex items-center justify-center shrink-0 animate-pulse">
             <Lightbulb size={22} />
           </div>

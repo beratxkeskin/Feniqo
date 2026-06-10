@@ -31,18 +31,18 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({ budget, spent }) => {
   const criticalThreshold = parseInt(localStorage.getItem('moneymate_budget_critical_threshold') || '80');
   const blockThreshold = parseInt(localStorage.getItem('moneymate_budget_block_threshold') || '100');
 
-  let borderStyleClass = 'border-slate-200 dark:border-slate-800 shadow-sm';
+  let borderStyleClass = '';
   if (percentage >= blockThreshold) {
-    borderStyleClass = 'border-red-500 dark:border-red-500/60 shadow-[0_0_15px_rgba(239,68,68,0.12)] dark:shadow-[0_0_20px_rgba(239,68,68,0.2)] ring-2 ring-red-500/15 animate-pulse border-t-2';
+    borderStyleClass = '!border-red-500 dark:!border-red-500/60 shadow-[0_0_15px_rgba(239,68,68,0.12)] dark:shadow-[0_0_20px_rgba(239,68,68,0.2)] ring-2 ring-red-500/15 animate-pulse border-t-2';
   } else if (percentage >= criticalThreshold) {
-    borderStyleClass = 'border-amber-500 dark:border-amber-500/60 shadow-[0_0_10px_rgba(245,158,11,0.08)] dark:shadow-[0_0_15px_rgba(245,158,11,0.15)] ring-1 ring-amber-500/10 border-t-2';
+    borderStyleClass = '!border-amber-500 dark:!border-amber-500/60 shadow-[0_0_10px_rgba(245,158,11,0.08)] dark:shadow-[0_0_15px_rgba(245,158,11,0.15)] ring-1 ring-amber-500/10 border-t-2';
   } else if (percentage >= warningThreshold) {
-    borderStyleClass = 'border-yellow-400 dark:border-yellow-400/50 shadow-sm border-t-2';
+    borderStyleClass = '!border-yellow-400 dark:!border-yellow-400/50 border-t-2';
   }
 
   return (
     <>
-      <div className={`rounded-2xl border bg-white dark:bg-slate-900 p-5 hover:shadow-md transition-all duration-300 flex flex-col justify-between space-y-4 relative overflow-hidden group ${borderStyleClass}`}>
+      <div className={`premium-card hover:shadow-md transition-all duration-300 flex flex-col justify-between space-y-4 relative overflow-hidden group ${borderStyleClass}`}>
         
         {/* Top colored accent line */}
         <div 

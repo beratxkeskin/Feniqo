@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import { Calendar, FileText, User, TrendingUp, TrendingDown, Globe, RefreshCw } from 'lucide-react';
-import { getCurrencySymbol } from '../../utils/formatters';
+import { getCurrencySymbol, formatCurrency } from '../../utils/formatters';
 import { CustomSelect } from '../common/CustomSelect';
+import { calculateAmortizationSchedule, parseLoanMetadata, serializeLoanMetadata, extractBaseDescription } from '../../utils/loanUtils';
 
 interface DebtFormProps {
   editingDebt?: any;
@@ -23,6 +24,18 @@ export const DebtForm: React.FC<DebtFormProps> = ({ editingDebt, onSuccess, onCa
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Bank Loan States
+  const [isLoan, setIsLoan] = useState(false);
+  const [interestRate, setInterestRate] = useState('3.50');
+  const [term, setTerm] = useState('12');
+  const [kkdf, setKkdf] = useState('15');
+  const [bsmv, setBsmv] = useState('10');
+  const [firstDueDate, setFirstDueDate] = useState(() => {
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    return nextMonth.toISOString().split('T')[0];
+  });
 
   // Foreign Currency States
   const [isForeignCurrency, setIsForeignCurrency] = useState(false);
@@ -80,7 +93,22 @@ export const DebtForm: React.FC<DebtFormProps> = ({ editingDebt, onSuccess, onCa
       setType(editingDebt.type);
       setDueDate(editingDebt.due_date);
       setIsPaid(editingDebt.is_paid);
-      setDescription(editingDebt.description || '');
+      
+      const loanMeta = parseLoanMetadata(editingDebt.description);
+      if (loanMeta) {
+        setIsLoan(true);
+        setInterestRate(loanMeta.interestRate.toString());
+        setTerm(loanMeta.term.toString());
+        setKkdf(loanMeta.kkdf.toString());
+        setBsmv(loanMeta.bsmv.toString());
+        if (loanMeta.installments && loanMeta.installments.length > 0) {
+          setFirstDueDate(loanMeta.installments[0].dueDate);
+        }
+        setDescription(extractBaseDescription(editingDebt.description));
+      } else {
+        setIsLoan(false);
+        setDescription(editingDebt.description || '');
+      }
     }
   }, [editingDebt]);
 
@@ -111,11 +139,49 @@ export const DebtForm: React.FC<DebtFormProps> = ({ editingDebt, onSuccess, onCa
       finalDescription = finalDescription ? `${finalDescription} ${originalText}` : originalText;
     }
 
+    let finalDueDate = dueDate;
+    if (isLoan && type === 'debt') {
+      const termNum = parseInt(term);
+      const rateNum = parseFloat(interestRate);
+      const kkdfNum = parseFloat(kkdf) || 0;
+      const bsmvNum = parseFloat(bsmv) || 0;
+
+      if (isNaN(termNum) || termNum <= 0) {
+        setErrorMsg(isEn ? 'Term (months) must be a positive integer.' : 'Vade (ay) pozitif bir tam sayı olmalıdır.');
+        setLoading(false);
+        return;
+      }
+      if (isNaN(rateNum) || rateNum < 0) {
+        setErrorMsg(isEn ? 'Interest rate cannot be negative.' : 'Faiz oranı negatif olamaz.');
+        setLoading(false);
+        return;
+      }
+
+      const schedule = calculateAmortizationSchedule(parsedAmount, termNum, rateNum, kkdfNum, bsmvNum, firstDueDate);
+      
+      const loanMeta = {
+        isLoan: true,
+        loanAmount: parsedAmount,
+        interestRate: rateNum,
+        term: termNum,
+        kkdf: kkdfNum,
+        bsmv: bsmvNum,
+        installments: schedule
+      };
+
+      finalDescription = serializeLoanMetadata(finalDescription, loanMeta);
+      
+      // The final due date is when the last payment is due
+      if (schedule.length > 0) {
+        finalDueDate = schedule[schedule.length - 1].dueDate;
+      }
+    }
+
     const payload = {
       title: title.trim(),
       amount: parsedAmount,
       type,
-      due_date: dueDate,
+      due_date: finalDueDate,
       is_paid: isPaid,
       description: finalDescription,
     };
@@ -286,24 +352,140 @@ export const DebtForm: React.FC<DebtFormProps> = ({ editingDebt, onSuccess, onCa
         </div>
       )}
 
-      {/* Due date input */}
-      <div className="space-y-1.5">
-        <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
-          Vade Tarihi
-        </label>
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
-            <Calendar size={16} />
-          </div>
+      {/* Loan checkbox toggle */}
+      {type === 'debt' && (
+        <div className="flex items-center space-x-3 p-3.5 bg-slate-50/50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/40 rounded-2xl transition-all duration-200">
           <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            className="premium-input pl-10 text-sm cursor-pointer"
-            required
+            type="checkbox"
+            id="isLoan"
+            checked={isLoan}
+            onChange={(e) => setIsLoan(e.target.checked)}
+            className="h-4.5 w-4.5 rounded-lg border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
           />
+          <label htmlFor="isLoan" className="text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+            {isEn ? 'This is a bank loan (Repayment Schedule)' : 'Bu bir banka kredisidir (Ödeme Planı Hesapla)'}
+          </label>
         </div>
-      </div>
+      )}
+
+      {/* Loan detailed inputs if checked */}
+      {isLoan && type === 'debt' ? (
+        <div className="p-4 bg-slate-50/50 dark:bg-slate-800/20 border border-slate-200/60 dark:border-slate-800/40 rounded-3xl space-y-4 animate-in fade-in duration-200">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
+                {isEn ? 'Interest Rate (Monthly %)' : 'Aylık Faiz Oranı (%)'}
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={interestRate}
+                onChange={(e) => setInterestRate(e.target.value)}
+                className="premium-input text-xs py-2 px-3 shadow-sm font-semibold"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
+                {isEn ? 'Term (Months)' : 'Vade (Ay)'}
+              </label>
+              <input
+                type="number"
+                value={term}
+                onChange={(e) => setTerm(e.target.value)}
+                className="premium-input text-xs py-2 px-3 shadow-sm font-semibold"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
+                KKDF Oranı (%)
+              </label>
+              <input
+                type="number"
+                value={kkdf}
+                onChange={(e) => setKkdf(e.target.value)}
+                className="premium-input text-xs py-2 px-3 shadow-sm font-semibold"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
+                BSMV Oranı (%)
+              </label>
+              <input
+                type="number"
+                value={bsmv}
+                onChange={(e) => setBsmv(e.target.value)}
+                className="premium-input text-xs py-2 px-3 shadow-sm font-semibold"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
+              {isEn ? 'First Installment Date' : 'İlk Taksit Tarihi'}
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
+                <Calendar size={14} />
+              </div>
+              <input
+                type="date"
+                value={firstDueDate}
+                onChange={(e) => setFirstDueDate(e.target.value)}
+                className="premium-input pl-9 text-xs py-2 shadow-sm font-semibold cursor-pointer"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Dynamic calculations preview */}
+          {parseFloat(amount) > 0 && parseInt(term) > 0 && (
+            <div className="p-3 bg-brand-500/5 dark:bg-brand-500/5 rounded-2xl border border-brand-100/50 dark:border-brand-900/20 text-center">
+              <span className="text-[9px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                {isEn ? 'Estimated Monthly Installment:' : 'Tahmini Aylık Taksit (Vergiler Dahil):'}
+              </span>
+              <strong className="text-sm font-black text-brand-600 dark:text-brand-400 block mt-0.5">
+                {(() => {
+                  const p = parseFloat(amount);
+                  const t = parseInt(term);
+                  const r = parseFloat(interestRate) || 0;
+                  const k = parseFloat(kkdf) || 0;
+                  const b = parseFloat(bsmv) || 0;
+                  try {
+                    const sched = calculateAmortizationSchedule(p, t, r, k, b, firstDueDate);
+                    return sched.length > 0 ? formatCurrency(sched[0].total, user?.currency || 'TRY') : '0.00';
+                  } catch (e) {
+                    return '0.00';
+                  }
+                })()}
+              </strong>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Due date input */
+        <div className="space-y-1.5">
+          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
+            Vade Tarihi
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
+              <Calendar size={16} />
+            </div>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="premium-input pl-10 text-sm cursor-pointer"
+              required
+            />
+          </div>
+        </div>
+      )}
 
       {/* Paid checkbox toggle */}
       <div className="flex items-center space-x-3 p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/40 rounded-2xl transition-all duration-200">

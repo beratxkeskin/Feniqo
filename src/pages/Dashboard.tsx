@@ -198,7 +198,7 @@ export const Dashboard: React.FC = () => {
           {/* Global Net Worth Badge */}
           <div className="hidden sm:block h-8 w-px bg-slate-200 dark:bg-slate-800" />
           
-          <div className="flex items-center space-x-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-2 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group">
+          <div className="flex items-center space-x-3 bg-white/50 dark:bg-slate-900/35 backdrop-blur-md border border-slate-200/40 dark:border-slate-800/40 px-4 py-2 rounded-full shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 group">
             <a href="#/networth" className="flex items-center space-x-3 cursor-pointer" title="Varlıklarım sayfasına git">
               <div className="p-2 bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-xl ring-1 ring-brand-500/20 group-hover:scale-105 transition-transform duration-200">
                 <Icons.Wallet size={18} />
@@ -227,7 +227,7 @@ export const Dashboard: React.FC = () => {
           {connectedBanks.length > 0 && (
             <>
               <div className="hidden md:block h-8 w-px bg-slate-200 dark:bg-slate-800" />
-              <div className="flex items-center space-x-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-2 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group">
+              <div className="flex items-center space-x-3 bg-white/50 dark:bg-slate-900/35 backdrop-blur-md border border-slate-200/40 dark:border-slate-800/40 px-4 py-2 rounded-full shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 group">
                 <a href="#/settings" className="flex items-center space-x-3 cursor-pointer" title="Açık Bankacılık ayarlarını yönet">
                   <div className="p-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl ring-1 ring-emerald-500/20 group-hover:scale-105 transition-transform duration-200">
                     <Icons.ShieldCheck size={18} />
@@ -370,7 +370,7 @@ export const Dashboard: React.FC = () => {
           })}
 
           {/* AI Coach Alert Suggestion Banner */}
-          <div className="relative overflow-hidden p-4 rounded-2xl border border-brand-500/20 bg-white dark:bg-slate-900 shadow-sm flex items-start space-x-3.5 mt-2 animate-in fade-in slide-in-from-top-1 duration-300 group hover:shadow-md transition-shadow">
+          <div className="relative overflow-hidden p-5 rounded-3xl border border-brand-500/15 bg-white/60 dark:bg-slate-900/40 backdrop-blur-md shadow-sm flex items-start space-x-4 mt-2 animate-in fade-in slide-in-from-top-1 duration-300 group hover:shadow-md transition-all duration-350">
             <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none transition-opacity group-hover:bg-brand-500/20" />
             
             <div className="p-2.5 bg-brand-500/5 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-xl flex items-center justify-center shrink-0 ring-1 ring-brand-500/20 z-10 group-hover:scale-105 transition-transform duration-300">
@@ -396,7 +396,7 @@ export const Dashboard: React.FC = () => {
       )}
 
       {/* AI PREDICTIVE ANALYTICS CARD */}
-      <div className="relative overflow-hidden p-5 rounded-2xl border border-brand-500/20 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-all duration-300 group">
+      <div className="premium-card relative overflow-hidden group">
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-brand-500/10 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none transition-opacity group-hover:bg-brand-500/20" />
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 relative z-10">
@@ -509,7 +509,7 @@ export const Dashboard: React.FC = () => {
             </a>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-5">
+          <div className="premium-card space-y-5">
             {budgetsWithProgress.length > 0 ? (
               <div className="space-y-4">
                 {budgetsWithProgress.slice(0, 3).map((budget) => {

@@ -526,7 +526,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-4 hover:shadow-md transition-all duration-200">
+    <div className="premium-card space-y-4">
       
       {/* Title & Customizer Header */}
       <div className="flex items-start justify-between gap-2">

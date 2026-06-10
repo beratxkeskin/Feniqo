@@ -175,10 +175,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentHash, onNavigate, hasUnre
                   <button
                     key={item.hash}
                     onClick={() => handleMobileNavigate(item.hash)}
-                    className={`flex items-center space-x-3 w-full px-4 py-3.5 rounded-xl text-sm font-medium transition-all ${
+                    className={`flex items-center space-x-3 w-full px-4 py-2.5 rounded-full text-xs font-semibold transition-all duration-300 ${
                       isActive
-                        ? 'bg-brand-600 text-white shadow-md shadow-brand-500/15'
-                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                        ? 'premium-active-menu'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50/60 dark:hover:bg-slate-800/30'
                     }`}
                   >
                     <IconComponent size={18} strokeWidth={isActive ? 2.5 : 2} />

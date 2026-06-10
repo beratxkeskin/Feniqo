@@ -253,7 +253,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentHash, onNavigat
       />
       
       {/* Content wrapper */}
-      <div className="lg:pl-64 min-h-screen flex flex-col flex-1">
+      <div className="lg:pl-72 min-h-screen flex flex-col flex-1">
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
           <div className="animate-in fade-in slide-in-from-bottom-3 duration-300">
             {children}

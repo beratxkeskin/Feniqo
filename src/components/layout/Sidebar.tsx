@@ -78,7 +78,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentHash, onNavigate, hasUn
 
   return (
     <>
-      <aside className="hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-colors duration-200 z-30">
+      <aside className="hidden lg:flex flex-col w-64 h-[calc(100vh-2rem)] fixed left-4 top-4 bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl border border-slate-200/40 dark:border-slate-800/45 rounded-3xl transition-all duration-300 z-30 shadow-[0_8px_32px_0_rgba(0,0,0,0.02)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.15)]">
       
       {/* Brand Header */}
       <div className="flex items-center justify-between px-6 py-6 border-b border-slate-100 dark:border-slate-800/60">
@@ -129,10 +129,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentHash, onNavigate, hasUn
             <button
               key={item.hash}
               onClick={() => onNavigate(item.hash)}
-              className={`flex items-center space-x-3 w-full px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+              className={`flex items-center space-x-3 w-full px-4 py-2.5 rounded-full text-xs font-semibold transition-all duration-300 ${
                 isActive
-                  ? 'bg-brand-600 text-white shadow-md shadow-brand-500/10 scale-[1.02]'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+                  ? 'premium-active-menu'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <IconComponent size={18} strokeWidth={isActive ? 2.5 : 2} />
@@ -174,7 +174,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentHash, onNavigate, hasUn
         </div>
 
         {/* User profile info & logout */}
-        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/40">
+        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/40 dark:bg-slate-800/20 border border-slate-200/30 dark:border-slate-800/20">
           <div className="flex flex-col overflow-hidden max-w-[140px]">
             <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
               {user.full_name || user.email.split('@')[0]}
